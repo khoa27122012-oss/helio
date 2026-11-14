@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Schibsted Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, sfmono-regular, monospace;
+
+  --color-ink: #101412;
+  --color-ink-2: #171c19;
+  --color-panel: #232a26;
+  --color-line: #313a35;
+  --color-paper: #e7e4da;
+  --color-mist: #a3aba3;
+  --color-lamp: #e0a04a;
+  --color-lamp-deep: #c48b3a;
+  --color-lamp-dim: #6e5426;
+  --color-lamp-soft: #2c261c;
+}
+
+@layer base {
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-ink);
+    color: var(--color-paper);
+    font-family: var(--font-sans);
+    text-rendering: optimizeLegibility;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  input,
+  textarea,
+  select {
+    caret-color: var(--color-lamp);
+  }
+
+  ::selection {
+    background: var(--color-lamp);
+    color: var(--color-ink);
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line) transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
