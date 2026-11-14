@@ -1,7 +1,7 @@
 import { vendorLabel } from "@/lib/gateway/vendors"
 import type { Agent, Pane } from "./types"
 
-export const ROSTER: Omit<Agent, "tokens" | "paused" | "note" | "apiKey" | "task" | "provider">[] = [
+export const ROSTER: Omit<Agent, "tokens" | "paused" | "note" | "apiKey" | "task" | "directive" | "provider">[] = [
   { id: "grok", name: "Grok", cli: "grok", model: "grok-4.5", worktree: "wt/grok" },
   { id: "claude", name: "Claude", cli: "claude", model: "opus", worktree: "wt/claude" },
   { id: "codex", name: "Codex", cli: "codex", model: "gpt", worktree: "wt/codex" },
@@ -10,7 +10,7 @@ export const ROSTER: Omit<Agent, "tokens" | "paused" | "note" | "apiKey" | "task
 ]
 
 export function roomAgent(row: (typeof ROSTER)[number]): Agent {
-  return { ...row, tokens: 0, paused: false, note: "", apiKey: "", task: "", provider: "browser" }
+  return { ...row, tokens: 0, paused: false, note: "", apiKey: "", task: "", directive: "", provider: "browser" }
 }
 
 export function agentHello(agent: Agent) {

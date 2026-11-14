@@ -26,7 +26,7 @@ type Actions = {
   toggleMachine: (id: string) => void
   toggleSkill: (id: string) => void
   setStrategy: (strategy: StrategyId) => void
-  setDirective: (text: string) => void
+  setAgentDirective: (id: string, text: string) => void
   addExtra: (skill: { name: string; source: string; text: string }) => void
   removeExtra: (id: string) => void
   addKeyed: (input: { name: string; apiKey: string; task: string; provider: VendorId; model: string }) => boolean
@@ -229,7 +229,7 @@ export const useStudio = create<Studio>()(
             prompt: input,
             skills: packSkills(state, input),
             context: roomContext(state, pane),
-            directive: [state.directive, agent?.task].filter(Boolean).join("\n"),
+            directive: [agent?.directive, agent?.task].filter(Boolean).join("\n"),
             route: state.strategy === "shield" ? "shield" : "bridge",
             tight: state.enabled.some((id) => id === "token-shield" || id === "prefix-cache" || id === "on-demand"),
             plain: state.enabled.includes("plain"),
@@ -423,7 +423,12 @@ export const useStudio = create<Studio>()(
         set({ enabled: reconcileEnabled() })
       },
       setStrategy: (strategy) => set({ strategy }),
-      setDirective: (text) => set({ directive: text.slice(0, 4000) }),
+      setAgentDirective: (id, text) => {
+        const value = text.slice(0, 4000)
+        set({
+          agents: get().agents.map((agent) => (agent.id === id ? { ...agent, directive: value } : agent)),
+        })
+      },
       addKeyed: (input) => {
         const key = cleanKey(input.apiKey)
         const name = input.name.trim().slice(0, 40)
@@ -450,6 +455,7 @@ export const useStudio = create<Studio>()(
           note: task,
           apiKey: key,
           task,
+          directive: "",
           provider,
         }
         const pane = chatPane(agent, nid("pane"))
@@ -514,6 +520,7 @@ export const useStudio = create<Studio>()(
           note: "",
           apiKey: "",
           task: "",
+          directive: "",
           provider: "browser",
         }
         const pane = chatPane(agent, nid("pane"))
@@ -576,11 +583,13 @@ export const useStudio = create<Studio>()(
                     : provider !== "browser"
                       ? VENDORS[provider].model
                       : "grok-4.5"
+                const inherited = typeof saved.directive === "string" ? saved.directive.slice(0, 4000) : ""
                 return {
                   ...agent,
                   apiKey,
                   model,
                   task: typeof agent.task === "string" ? agent.task.slice(0, 400) : "",
+                  directive: typeof agent.directive === "string" ? agent.directive.slice(0, 4000) : inherited,
                   provider,
                 }
               })

@@ -131,7 +131,7 @@ export function Room() {
   const strategy = useStudio((s) => s.strategy)
   const enabled = useStudio((s) => s.enabled)
   const extraSkills = useStudio((s) => s.extraSkills)
-  const directive = useStudio((s) => s.directive)
+  const setAgentDirective = useStudio((s) => s.setAgentDirective)
   const focus = useStudio((s) => s.focus)
   const setLayout = useStudio((s) => s.setLayout)
   const addPane = useStudio((s) => s.addPane)
@@ -387,8 +387,24 @@ export function Room() {
               Tìm skill
             </Link>
             <Link to="/lenh" className="inline-flex h-11 items-center text-sm text-lamp">
-              File lệnh{directive.trim() ? " · đang có" : ""}
+              {focusedAgent ? `lenh.md · ${focusedAgent.name}` : "lenh.md"}
+              {focusedAgent?.directive?.trim() ? " · đang có" : ""}
             </Link>
+            {focusedAgent ? (
+              <label className="mt-2 flex flex-col gap-2">
+                <span className="font-mono text-xs text-mist">lenh.md · {(focusedAgent.directive ?? "").length}/4000</span>
+                <textarea
+                  value={focusedAgent.directive ?? ""}
+                  onChange={(event) => setAgentDirective(focusedAgent.id, event.target.value)}
+                  aria-label={`lenh.md của ${focusedAgent.name}`}
+                  spellCheck={false}
+                  placeholder={`Lệnh riêng cho ${focusedAgent.name}.`}
+                  className="min-h-28 w-full rounded-md border border-line bg-ink p-3 font-mono text-sm leading-6 text-paper outline-none placeholder:text-mist focus-visible:border-lamp"
+                />
+              </label>
+            ) : (
+              <p className="mt-2 text-sm leading-6 text-mist">Pane shell không có file lệnh.</p>
+            )}
             <h3 className="mt-5 text-sm font-medium">AI đã kết nối</h3>
             {connected.length === 0 ? (
               <p className="mt-2 text-sm leading-6 text-paper">

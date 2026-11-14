@@ -8,8 +8,8 @@ Phòng điều khiển cho agent và kho mã. Nhiều khung chat, mỗi agent m�
 - **Thêm agent** và **Quay lại**
 - Tách 1, 2 hoặc 3 cột, shell cạnh chat, tạm dừng, công thức
 - **Hàng rào** chặn `rm -rf`, `sudo`, `git reset --hard`, `git push --force`
-- Plugin luôn bật. Skill tìm trên GitHub, dán link, hoặc tải file .md
-- File lệnh `lenh.md` siết việc model được làm. Hàng rào vẫn thắng
+- Plugin luôn bật. Tìm mọi skill và plugin, dán link GitHub, hoặc tải file .md
+- Mỗi agent một file `lenh.md`. Hàng rào vẫn thắng
 - Kết nối khóa đã bỏ. AI trên trình duyệt cần đăng nhập Google, không cần khóa
 - Khóa API dán trong mục Agent. Holine tự nhận nhà cung cấp và chỉ thêm khi khóa đúng. Phòng hiện tên đã đặt.
 - Câu không phải lệnh gọi model sau khi đăng nhập. Lệnh shell không gọi model

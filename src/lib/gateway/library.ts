@@ -24,4 +24,16 @@ export const PUBLIC_SKILLS: PublicSkill[] = [
   { name: "theme-factory", source: "anthropics/skills", agents: "Claude", blurb: "Chọn theme cho trang.", url: blob("theme-factory") },
   { name: "slack-gif-creator", source: "anthropics/skills", agents: "Claude", blurb: "Tạo GIF cho Slack.", url: blob("slack-gif-creator") },
   { name: "internal-comms", source: "anthropics/skills", agents: "Claude", blurb: "Thông báo nội bộ.", url: blob("internal-comms") },
+  { name: "academy-guide", source: "anthropics/skills", agents: "Claude", blurb: "SKILL.md academy-guide.", url: blob("academy-guide") },
+  { name: "claude-api", source: "anthropics/skills", agents: "Claude", blurb: "SKILL.md claude-api.", url: blob("claude-api") },
+  { name: "discernment-nudge", source: "anthropics/skills", agents: "Claude", blurb: "SKILL.md discernment-nudge.", url: blob("discernment-nudge") },
+  { name: "doc-coauthoring", source: "anthropics/skills", agents: "Claude", blurb: "Viết tài liệu theo từng bước.", url: blob("doc-coauthoring") },
+  { name: "web-artifacts-builder", source: "anthropics/skills", agents: "Claude", blurb: "Dựng artifact HTML nhiều phần.", url: blob("web-artifacts-builder") },
+  {
+    name: "heretic",
+    source: "akillness/jeo-skills",
+    agents: "Claude",
+    blurb: "Skill heretic. Holine chỉ nạp chữ, không chạy công cụ và không nới hàng rào.",
+    url: "https://github.com/akillness/jeo-skills/blob/main/.agent-skills/heretic/SKILL.md",
+  },
 ]

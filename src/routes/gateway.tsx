@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Link, createFileRoute } from "@tanstack/react-router"
+import { createFileRoute } from "@tanstack/react-router"
 import { aiStatus } from "@/lib/gateway/ask"
 import { INSTALLED, STRATEGIES, type Installed } from "@/lib/gateway/catalog"
 import { importGithub, searchSkills, type SkillHit } from "@/lib/gateway/find"
@@ -35,11 +35,6 @@ function Row({ item }: { item: Installed }) {
   )
 }
 
-function stars(count: number) {
-  if (count >= 1000) return `${(count / 1000).toFixed(count >= 10000 ? 0 : 1)}k sao`
-  return `${count} sao`
-}
-
 function GatewayPage() {
   const strategy = useStudio((s) => s.strategy)
   const setStrategy = useStudio((s) => s.setStrategy)
@@ -69,14 +64,36 @@ function GatewayPage() {
   }, [])
 
   const needle = query.trim().toLowerCase()
-  const known = PUBLIC_SKILLS.filter(
-    (item) => !needle || `${item.name} ${item.blurb} ${item.agents} ${item.source}`.toLowerCase().includes(needle),
-  )
-  const show = (item: Installed) =>
-    !needle || `${item.name} ${item.blurb} ${item.source}`.toLowerCase().includes(needle)
-  const plugins = INSTALLED.filter((item) => item.kind === "plugin" && show(item))
-  const skills = INSTALLED.filter((item) => item.kind === "skill" && show(item))
+  const known = PUBLIC_SKILLS
+  const plugins = INSTALLED.filter((item) => item.kind === "plugin")
+  const skills = INSTALLED.filter((item) => item.kind === "skill")
   const voice = ready === null ? "Đang kiểm tra Grok." : ready ? "Chỉ Grok 4.5 trả lời." : "Grok chưa có trong bản này."
+  const local = needle.length < 2
+    ? []
+    : [
+        ...INSTALLED.filter((item) => `${item.name} ${item.blurb} ${item.source}`.toLowerCase().includes(needle)).map((item) => ({
+          key: `local-${item.id}`,
+          name: item.name,
+          source: item.source,
+          blurb: item.blurb,
+          meta: "Đang bật",
+          kind: item.kind,
+          url: "",
+          skillId: "",
+        })),
+        ...PUBLIC_SKILLS.filter((item) => `${item.name} ${item.blurb} ${item.source} ${item.agents}`.toLowerCase().includes(needle)).map(
+          (item) => ({
+            key: `pub-${item.url}`,
+            name: item.name,
+            source: item.source,
+            blurb: item.blurb,
+            meta: item.agents,
+            kind: "skill" as const,
+            url: item.url,
+            skillId: "",
+          }),
+        ),
+      ]
 
   function take(skill: { name: string; source: string; text: string }) {
     if (skill.text.trim().length < 20) {
@@ -104,7 +121,7 @@ function GatewayPage() {
       setHits(result.items)
       setSearched(true)
       if (!result.ok) setNote(result.error)
-      else if (result.items.length === 0) setNote("GitHub không có kho khớp. Dán link hoặc chọn file đã kiểm.")
+      else if (result.items.length === 0 && local.length === 0) setNote("Không có skill hay plugin khớp. Dán link GitHub bên dưới.")
     } catch (error) {
       setHits([])
       setSearched(true)
@@ -114,13 +131,13 @@ function GatewayPage() {
     }
   }
 
-  async function pull(target: string) {
+  async function pull(target: string, skillId = "") {
     const link = target.trim()
     if (!link) return
     setBusy(true)
     setNote("")
     try {
-      const result = await importGithub({ data: { url: link } })
+      const result = await importGithub({ data: { url: link, skillId } })
       if (!result.ok) {
         setNote(result.error)
         return
@@ -149,11 +166,8 @@ function GatewayPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Skill</h1>
         <p className="mt-1 max-w-xl text-sm leading-6 text-mist">
-          Tìm kho trên GitHub. Claude, Codex, Gemini CLI và Cursor dùng cùng kiểu file SKILL.md. {voice} Holine không cài CLI của các bên đó.
+          Tìm mọi skill và plugin. Gõ tên, ví dụ heretic, rồi bấm Tìm. {voice} Holine không cài CLI và không chạy script trong file.
         </p>
-        <Link to="/lenh" className="mt-3 inline-flex h-11 items-center text-sm text-lamp">
-          File lệnh · khóa viết code, chỉ lập khung
-        </Link>
         <form
           className="mt-4 flex flex-col gap-2 sm:flex-row"
           onSubmit={(event) => {
@@ -164,8 +178,8 @@ function GatewayPage() {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Tìm skill trên GitHub"
-            aria-label="Tìm skill trên GitHub"
+            placeholder="Tìm skill hoặc plugin"
+            aria-label="Tìm skill hoặc plugin"
             className="h-12 min-w-0 flex-1 rounded-md border border-line bg-ink-2 px-3 text-sm text-paper outline-none placeholder:text-mist focus-visible:border-lamp"
           />
           <Button type="submit" disabled={busy}>
@@ -191,41 +205,66 @@ function GatewayPage() {
         {note ? <p className="mt-3 text-sm leading-6 text-paper">{note}</p> : null}
       </div>
 
-      {searched ? (
+      {needle.length >= 2 || searched ? (
         <section className="flex flex-col gap-3">
-          <h2 className="text-lg font-semibold">Kết quả GitHub</h2>
-          {hits.length === 0 ? (
-            <p className="text-sm text-mist">Chưa có kho nào.</p>
-          ) : (
-            <ul className="flex flex-col gap-3">
-              {hits.map((item) => (
-                <li key={item.url} className="rounded-lg border border-line bg-ink-2 p-4">
+          <h2 className="text-lg font-semibold">Kết quả</h2>
+          {local.map((item) => (
+            <article key={item.key} className="rounded-lg border border-line bg-ink-2 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="text-base font-semibold">{item.name}</h3>
+                  <p className="mt-1 font-mono text-xs text-mist">
+                    {item.kind === "plugin" ? "Plugin" : "Skill"} · {item.meta} · {item.source}
+                  </p>
+                </div>
+                {item.url ? (
+                  <Button variant="line" className="px-3" disabled={busy} onClick={() => void pull(item.url, item.skillId)}>
+                    Đưa vào phòng
+                  </Button>
+                ) : (
+                  <span className="font-mono text-xs text-lamp">Đang bật</span>
+                )}
+              </div>
+              <p className="mt-3 text-sm leading-6 text-paper">{item.blurb}</p>
+            </article>
+          ))}
+          {searched
+            ? hits
+                .filter(
+                  (item) =>
+                    !local.some((row) => row.name.toLowerCase() === item.name.toLowerCase() && row.source === item.source),
+                )
+                .map((item) => (
+                <article key={`${item.source}-${item.name}-${item.skillId ?? ""}`} className="rounded-lg border border-line bg-ink-2 p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
                       <h3 className="text-base font-semibold">{item.name}</h3>
-                      <p className="mt-1 font-mono text-xs text-mist">{stars(item.stars)}</p>
+                      <p className="mt-1 font-mono text-xs text-mist">
+                        {item.kind === "plugin" ? "Plugin" : "Skill"} · {item.meta} · {item.source}
+                      </p>
                     </div>
-                    <Button variant="line" className="px-3" disabled={busy} onClick={() => void pull(item.url)}>
+                    <Button variant="line" className="px-3" disabled={busy} onClick={() => void pull(item.url, item.skillId)}>
                       Đưa vào phòng
                     </Button>
                   </div>
                   <p className="mt-3 text-sm leading-6 text-paper">{item.blurb}</p>
-                </li>
-              ))}
-            </ul>
-          )}
+                </article>
+              ))
+            : null}
+          {local.length === 0 && (!searched || hits.length === 0) ? (
+            <p className="text-sm text-mist">{busy ? "Đang tìm…" : "Bấm Tìm để lấy chỉ mục skill và plugin."}</p>
+          ) : null}
         </section>
       ) : null}
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">File đã kiểm</h2>
-        <p className="text-sm leading-6 text-mist">SKILL.md công khai trong anthropics/skills. Bấm để tải đúng file, không phải danh sách giả.</p>
+        <p className="text-sm leading-6 text-mist">SKILL.md công khai đã kiểm. Bấm để tải đúng file. Danh sách đầy đủ nằm ở kết quả tìm.</p>
         <ul className="flex flex-col gap-3">
           {known.map((item) => (
             <Known key={item.url} item={item} busy={busy} onPull={() => void pull(item.url)} />
           ))}
         </ul>
-        {known.length === 0 ? <p className="text-sm text-mist">Không có file đã kiểm khớp chữ vừa gõ.</p> : null}
       </section>
 
       <section className="flex flex-col gap-3">
@@ -321,7 +360,6 @@ function GatewayPage() {
             <Row key={item.id} item={item} />
           ))}
         </ul>
-        {plugins.length === 0 ? <p className="text-sm text-mist">Không có plugin khớp.</p> : null}
       </section>
 
       <section className="flex flex-col gap-3">
@@ -331,7 +369,6 @@ function GatewayPage() {
             <Row key={item.id} item={item} />
           ))}
         </ul>
-        {skills.length === 0 ? <p className="text-sm text-mist">Không có skill khớp.</p> : null}
       </section>
     </div>
   )

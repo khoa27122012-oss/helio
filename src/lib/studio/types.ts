@@ -39,6 +39,7 @@ export type Agent = {
   note: string
   apiKey: string
   task: string
+  directive: string
   provider: AgentProvider
 }
 
