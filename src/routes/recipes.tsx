@@ -4,7 +4,7 @@ import { useStudio } from "@/lib/studio/store"
 
 export const Route = createFileRoute("/recipes")({
   component: RecipesPage,
-  head: () => ({ meta: [{ title: "Công thức · Helio" }] }),
+  head: () => ({ meta: [{ title: "Công thức · Holine" }] }),
 })
 
 function RecipesPage() {

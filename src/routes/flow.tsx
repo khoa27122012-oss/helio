@@ -8,7 +8,7 @@ import type { Issue, Pull } from "@/lib/studio/types"
 
 export const Route = createFileRoute("/flow")({
   component: FlowPage,
-  head: () => ({ meta: [{ title: "Duyệt · Helio" }] }),
+  head: () => ({ meta: [{ title: "Duyệt · Holine" }] }),
 })
 
 type Filter = "all" | "open" | "review" | "fail" | "merged"
@@ -51,7 +51,7 @@ function FlowPage() {
   const [writing, setWriting] = useState(false)
   const [title, setTitle] = useState("")
   const [body, setBody] = useState("")
-  const [repo, setRepo] = useState("helio")
+  const [repo, setRepo] = useState("holine")
   const [note, setNote] = useState("")
   const rows = useMemo(() => rowsFor(filter, issues, pulls), [filter, issues, pulls])
   const current = rows.find((row) => row.key === picked) ?? rows[0]

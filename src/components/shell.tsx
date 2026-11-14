@@ -15,7 +15,6 @@ import {
 import { Mark } from "@/components/mark"
 import { Palette } from "@/components/palette"
 import { cn } from "@/lib/cn"
-import { compact } from "@/lib/studio/format"
 import { useStudio } from "@/lib/studio/store"
 
 const NAV = [
@@ -61,7 +60,6 @@ function NavLink({
 export function Shell({ children }: { children: ReactNode }) {
   const path = useRouterState({ select: (s) => s.location.pathname })
   const blocked = useStudio((s) => s.blocked)
-  const tokens = useStudio((s) => s.agents.reduce((sum, agent) => sum + agent.tokens, 0))
   const tick = useStudio((s) => s.tick)
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
@@ -96,7 +94,7 @@ export function Shell({ children }: { children: ReactNode }) {
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line px-3">
         <Link to="/" className="flex items-center gap-2">
           <Mark />
-          <span className="text-base font-semibold tracking-tight">Helio</span>
+          <span className="text-base font-semibold tracking-tight">Holine</span>
         </Link>
         <button
           type="button"
@@ -116,11 +114,12 @@ export function Shell({ children }: { children: ReactNode }) {
           >
             <Search className="size-5" />
           </button>
-          <span className="hidden items-center gap-2 rounded-md border border-line px-3 py-2 font-mono text-xs text-mist sm:inline-flex">
-            <Shield className="size-3.5 text-lamp" aria-hidden="true" />
-            {blocked} đã chặn
-          </span>
-          <span className="rounded-md bg-lamp-soft px-3 py-2 font-mono text-xs text-lamp">{compact(tokens)} token</span>
+          {blocked > 0 ? (
+            <span className="hidden items-center gap-2 rounded-md border border-line px-3 py-2 font-mono text-xs text-mist sm:inline-flex">
+              <Shield className="size-3.5 text-lamp" aria-hidden="true" />
+              {blocked} đã chặn
+            </span>
+          ) : null}
         </div>
       </header>
       <div className="flex min-h-0 flex-1">

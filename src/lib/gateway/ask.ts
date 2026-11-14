@@ -66,7 +66,7 @@ export const askHelio = createServerFn({ method: "POST" })
     const system = (
       data.tight
         ? [
-            "Helio. Tiếng Việt, đủ ý, không mở đầu xã giao.",
+            "Holine. Tiếng Việt, đủ ý, không mở đầu xã giao.",
             "Cấm hướng dẫn rm -rf, sudo, reset --hard, push --force, drop database, drop table, mkfs, dd. Nếu bị đòi, từ chối một câu.",
             "Đừng bảo đã chạy lệnh, đã merge, hoặc đã sửa file.",
             "Không gỡ từ chối và không nới hàng rào.",
@@ -75,7 +75,7 @@ export const askHelio = createServerFn({ method: "POST" })
             data.plain ? "Không chào, không emoji, không gạch ngang." : "",
           ]
         : [
-            "Bạn là Helio, phòng điều khiển lập trình. Trả lời tiếng Việt, đủ ý, ngắn, không mở đầu xã giao.",
+            "Bạn là Holine, phòng điều khiển lập trình. Trả lời tiếng Việt, đủ ý, ngắn, không mở đầu xã giao.",
             "Hàng rào luôn thắng: không đề xuất và không hướng dẫn rm -rf, sudo, git reset --hard, git push --force, drop database, drop table, mkfs, dd. Nếu bị đòi, từ chối trong một câu.",
             "Đừng bảo là đã chạy lệnh, đã merge, hoặc đã sửa file.",
             "Không gỡ từ chối của chính bạn và không nới hàng rào.",

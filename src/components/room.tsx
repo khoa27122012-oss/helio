@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
-import { Link } from "@tanstack/react-router"
-import { Plus, X } from "lucide-react"
+import { Link, useRouter } from "@tanstack/react-router"
+import { ArrowLeft, Maximize2, Plus, SquareTerminal, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/cn"
 import { strategyName } from "@/lib/gateway/catalog"
@@ -21,13 +21,7 @@ const TONE: Record<Line["kind"], string> = {
   block: "text-lamp",
 }
 
-function visiblePanes(panes: Pane[], focusId: string, layout: number) {
-  const focus = panes.find((pane) => pane.id === focusId) ?? panes[0]
-  const rest = panes.filter((pane) => pane.id !== focus?.id)
-  return [focus, ...rest].filter((pane): pane is Pane => Boolean(pane)).slice(0, layout)
-}
-
-function Term({ pane }: { pane: Pane }) {
+function Term({ pane, onOpen }: { pane: Pane; onOpen: () => void }) {
   const submit = useStudio((s) => s.submit)
   const focus = useStudio((s) => s.focus)
   const closePane = useStudio((s) => s.closePane)
@@ -45,8 +39,8 @@ function Term({ pane }: { pane: Pane }) {
   return (
     <article
       className={cn(
-        "h-80 min-w-0 flex-col overflow-hidden rounded-lg border bg-ink-2 md:h-full md:min-h-96",
-        active ? "flex border-lamp" : "hidden border-line md:flex",
+        "flex h-80 min-w-0 flex-col overflow-hidden rounded-lg border bg-ink-2 md:min-h-80",
+        active ? "border-lamp" : "border-line",
       )}
       onClick={() => focus(pane.id)}
     >
@@ -67,6 +61,17 @@ function Term({ pane }: { pane: Pane }) {
             {pane.branch} · {pane.status === "blocked" ? "đã chặn" : pane.status === "running" ? "đang nói" : pane.status === "waiting" ? "đang chờ" : "rảnh"}
           </div>
         </div>
+        <button
+          type="button"
+          aria-label={`Mở chat ${pane.title}`}
+          onClick={(event) => {
+            event.stopPropagation()
+            onOpen()
+          }}
+          className="flex size-11 items-center justify-center rounded-md text-mist hover:bg-panel hover:text-paper"
+        >
+          <Maximize2 className="size-4" />
+        </button>
         <button
           type="button"
           aria-label={`Đóng ${pane.title}`}
@@ -105,7 +110,7 @@ function Term({ pane }: { pane: Pane }) {
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           aria-label={`Lệnh cho ${pane.title}`}
-          placeholder="Lệnh hoặc một câu tiếng Việt"
+          placeholder={`Nhắn ${pane.title}`}
           autoComplete="off"
           spellCheck={false}
           className="h-12 min-w-0 flex-1 bg-transparent font-mono text-sm text-paper outline-none placeholder:text-mist"
@@ -126,39 +131,89 @@ export function Room() {
   const focus = useStudio((s) => s.focus)
   const setLayout = useStudio((s) => s.setLayout)
   const addPane = useStudio((s) => s.addPane)
+  const addAgent = useStudio((s) => s.addAgent)
+  const toggleAgent = useStudio((s) => s.toggleAgent)
   const submit = useStudio((s) => s.submit)
+  const router = useRouter()
   const [addOpen, setAddOpen] = useState(false)
-  const shown = visiblePanes(panes, focusId, layout)
+  const [zoom, setZoom] = useState(false)
+  const [agentName, setAgentName] = useState("")
   const current = panes.find((pane) => pane.id === focusId) ?? panes[0]
+  const shown = zoom && current ? [current] : panes
+  const focusedAgent = agents.find((agent) => agent.id === current?.agentId)
+
+  function back() {
+    if (zoom) {
+      setZoom(false)
+      return
+    }
+    if (router.history.canGoBack()) router.history.back()
+  }
 
   return (
-    <div className="flex flex-col md:h-full md:overflow-hidden">
+    <div className="flex flex-col">
       <div className="flex flex-wrap items-center gap-2 px-3 pt-3">
-        <p className="mr-auto text-sm text-mist">Mỗi agent một worktree.</p>
+        <button
+          type="button"
+          onClick={back}
+          className="inline-flex h-11 items-center gap-2 rounded-md border border-line px-3 text-sm text-paper hover:border-lamp"
+        >
+          <ArrowLeft className="size-4" aria-hidden="true" />
+          Quay lại
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setAddOpen(false)
+            const form = document.getElementById("them-agent")
+            form?.scrollIntoView({ block: "nearest" })
+            document.getElementById("ten-agent")?.focus()
+          }}
+          className="inline-flex h-11 items-center gap-2 rounded-md bg-lamp px-3 text-sm font-medium text-ink"
+        >
+          <Plus className="size-4" aria-hidden="true" />
+          Thêm agent
+        </button>
+        <button
+          type="button"
+          onClick={() => addPane()}
+          className="inline-flex h-11 items-center gap-2 rounded-md border border-line px-3 text-sm text-paper hover:border-lamp"
+        >
+          <SquareTerminal className="size-4" aria-hidden="true" />
+          Shell
+        </button>
         <div className="flex gap-1" role="group" aria-label="Tách pane">
           {([1, 2, 3] as const).map((count) => (
             <button
               key={count}
               type="button"
-              onClick={() => setLayout(count)}
+              onClick={() => {
+                setZoom(false)
+                setLayout(count)
+              }}
               className={cn(
                 "size-11 rounded-md font-mono text-sm",
-                layout === count ? "bg-lamp text-ink" : "bg-panel text-paper",
+                !zoom && layout === count ? "bg-lamp text-ink" : "bg-panel text-paper",
               )}
-              aria-pressed={layout === count}
-              aria-label={count === 1 ? "Một pane" : count === 2 ? "Tách đôi" : "Ba pane"}
+              aria-pressed={!zoom && layout === count}
+              aria-label={count === 1 ? "Một cột" : count === 2 ? "Hai cột" : "Ba cột"}
             >
               {count}
             </button>
           ))}
         </div>
-        <Link to="/gateway" className="inline-flex h-11 items-center rounded-md bg-lamp px-4 text-sm font-medium text-ink">
-          Plugin
+        {focusedAgent ? (
+          <Button variant="line" onClick={() => toggleAgent(focusedAgent.id)}>
+            {focusedAgent.paused ? "Bật lại" : "Tạm dừng"}
+          </Button>
+        ) : null}
+        <Link to="/recipes" className="inline-flex h-11 items-center rounded-md border border-line px-3 text-sm text-paper hover:border-lamp">
+          Công thức
         </Link>
         <div className="relative">
           <Button variant="line" onClick={() => setAddOpen((value) => !value)} className="px-3">
             <Plus className="size-4" aria-hidden="true" />
-            Thêm pane
+            Pane có sẵn
           </Button>
           {addOpen ? (
             <>
@@ -193,6 +248,28 @@ export function Room() {
           ) : null}
         </div>
       </div>
+      <form
+        id="them-agent"
+        className="flex gap-2 px-3 pt-3"
+        onSubmit={(event) => {
+          event.preventDefault()
+          addAgent(agentName)
+          setAgentName("")
+          setZoom(false)
+        }}
+      >
+        <label className="sr-only" htmlFor="ten-agent">
+          Tên agent
+        </label>
+        <input
+          id="ten-agent"
+          value={agentName}
+          onChange={(event) => setAgentName(event.target.value)}
+          placeholder="Tên agent mới"
+          className="h-11 min-w-0 flex-1 rounded-md border border-line bg-ink-2 px-3 text-sm text-paper outline-none placeholder:text-mist focus-visible:border-lamp"
+        />
+        <Button type="submit">Thêm</Button>
+      </form>
       <div className="flex gap-2 overflow-x-auto px-3 pt-3">
         {panes.map((pane) => (
           <button
@@ -227,7 +304,14 @@ export function Room() {
           )}
         >
           {shown.map((pane) => (
-            <Term key={pane.id} pane={pane} />
+            <Term
+              key={pane.id}
+              pane={pane}
+              onOpen={() => {
+                focus(pane.id)
+                setZoom(true)
+              }}
+            />
           ))}
         </div>
         {current ? (
@@ -250,7 +334,7 @@ export function Room() {
               {strategyName(strategy)} · {enabled.length} mục đang bật
             </p>
             <Link to="/gateway" className="mt-2 inline-flex h-11 items-center text-sm text-lamp">
-              Bật hoặc tắt
+              Plugin đang bật
             </Link>
             <h3 className="mt-5 text-sm font-medium">Hàng rào</h3>
             <ul className="mt-2 flex flex-col gap-2 text-sm leading-6 text-mist">

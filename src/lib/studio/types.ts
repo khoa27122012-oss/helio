@@ -119,6 +119,7 @@ export type StudioData = {
   series: Point[]
   heatmap: number[]
   blocked: number
+  started: boolean
   enabled: string[]
   strategy: StrategyId
   catalogRev: number

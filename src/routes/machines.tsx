@@ -6,7 +6,7 @@ import { useStudio } from "@/lib/studio/store"
 
 export const Route = createFileRoute("/machines")({
   component: MachinesPage,
-  head: () => ({ meta: [{ title: "Máy · Helio" }] }),
+  head: () => ({ meta: [{ title: "Máy · Holine" }] }),
 })
 
 function MachinesPage() {

@@ -20,7 +20,7 @@ export const INSTALLED: Installed[] = [
     id: "plain",
     name: "Giọng thường",
     kind: "plugin",
-    source: "Helio",
+    source: "Holine",
     shield: false,
     defaultOn: true,
     blurb: "Cắt câu mở đầu, emoji và cụm sáo trước khi hiện chữ. Ý trả lời giữ nguyên.",
@@ -30,7 +30,7 @@ export const INSTALLED: Installed[] = [
     id: "concrete",
     name: "Nói đúng việc",
     kind: "plugin",
-    source: "Helio",
+    source: "Holine",
     shield: false,
     defaultOn: true,
     blurb: "Bắt model gọi tên nhánh, PR và file có trong phòng. Không bài luận chung.",
@@ -50,7 +50,7 @@ export const INSTALLED: Installed[] = [
     id: "token-shield",
     name: "Token shield",
     kind: "plugin",
-    source: "Helio",
+    source: "Holine",
     shield: true,
     defaultOn: true,
     blurb: "Prompt chỉ mang digest một dòng mỗi skill. Cùng một model. Không cắt ý, không nới hàng rào.",
@@ -60,7 +60,7 @@ export const INSTALLED: Installed[] = [
     id: "on-demand",
     name: "Skill theo câu",
     kind: "plugin",
-    source: "Helio",
+    source: "Holine",
     shield: true,
     defaultOn: false,
     blurb: "Chỉ nạp skill khớp câu hỏi. Hàng rào vẫn luôn có. Không bỏ bước cần làm.",
@@ -70,7 +70,7 @@ export const INSTALLED: Installed[] = [
     id: "diff-only",
     name: "Ngữ cảnh ngắn",
     kind: "plugin",
-    source: "Helio",
+    source: "Holine",
     shield: true,
     defaultOn: false,
     blurb: "Chỉ gửi nhánh, pull request và máy. Không kể lại cả phiên. Ý trả lời không bị cắt.",
@@ -80,7 +80,7 @@ export const INSTALLED: Installed[] = [
     id: "prefix-cache",
     name: "Nhớ phần mở",
     kind: "plugin",
-    source: "Helio",
+    source: "Holine",
     shield: true,
     defaultOn: false,
     blurb: "Không gửi lại phần hướng dẫn lặp. Luật an toàn vẫn nằm trong mỗi lần gọi.",
@@ -139,7 +139,7 @@ export const STRATEGIES: { id: StrategyId; name: string; detail: string }[] = [
 ]
 
 export function defaultEnabled() {
-  return INSTALLED.filter((item) => item.defaultOn).map((item) => item.id)
+  return INSTALLED.map((item) => item.id)
 }
 
 export function skillDigest(enabled: string[], prompt = "") {

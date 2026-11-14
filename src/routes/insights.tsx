@@ -5,7 +5,7 @@ import { useStudio } from "@/lib/studio/store"
 
 export const Route = createFileRoute("/insights")({
   component: InsightsPage,
-  head: () => ({ meta: [{ title: "Nhịp · Helio" }] }),
+  head: () => ({ meta: [{ title: "Nhịp · Holine" }] }),
 })
 
 function Chart({ data }: { data: { day: string; tokens: number }[] }) {
@@ -84,14 +84,18 @@ function InsightsPage() {
       <section className="grid gap-3 lg:grid-cols-2">
         <div className="rounded-lg border border-line bg-ink-2 p-4">
           <h2 className="text-sm font-medium">Vừa xảy ra</h2>
-          <ul className="mt-3 flex flex-col gap-3">
-            {activity.map((item) => (
-              <li key={item.id} className="text-sm leading-6">
-                <span className="text-paper">{item.text}</span>
-                <span className="mt-1 block font-mono text-xs text-mist">{item.time}</span>
-              </li>
-            ))}
-          </ul>
+          {activity.length === 0 ? (
+            <p className="mt-3 text-sm text-mist">Chưa có việc trong phòng.</p>
+          ) : (
+            <ul className="mt-3 flex flex-col gap-3">
+              {activity.map((item) => (
+                <li key={item.id} className="text-sm leading-6">
+                  <span className="text-paper">{item.text}</span>
+                  <span className="mt-1 block font-mono text-xs text-mist">{item.time}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
         <div className="rounded-lg border border-line bg-ink-2 p-4">
           <h2 className="text-sm font-medium">PR còn mở</h2>

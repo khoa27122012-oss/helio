@@ -4,7 +4,8 @@ import { askHelio } from "@/lib/gateway/ask"
 import { INSTALLED, skillDigest } from "@/lib/gateway/catalog"
 import { needsModel, planReply, type Reply } from "./reply"
 import { demoData } from "./seed"
-import type { Pane, PaneStatus, StudioData, StrategyId } from "./types"
+import { chatPane, ROSTER, roomAgent } from "./roster"
+import type { Agent, Pane, PaneStatus, StudioData, StrategyId } from "./types"
 
 type Actions = {
   tick: () => void
@@ -23,6 +24,8 @@ type Actions = {
   toggleMachine: (id: string) => void
   toggleSkill: (id: string) => void
   setStrategy: (strategy: StrategyId) => void
+  begin: () => void
+  addAgent: (name: string) => void
   reset: () => void
 }
 
@@ -60,16 +63,8 @@ function roomContext(state: StudioData, pane: Pane) {
   return lines.join("\n")
 }
 
-const KNOWN = new Set(INSTALLED.map((item) => item.id))
-
-function reconcileEnabled(saved: string[] | undefined, fresh: string[], rev: number | undefined) {
-  const base = (saved?.length ? saved : fresh).filter((id) => KNOWN.has(id))
-  if ((rev ?? 1) >= 2) return base
-  const next = [...base]
-  for (const id of ["plain", "concrete"]) {
-    if (!next.includes(id)) next.push(id)
-  }
-  return next
+function reconcileEnabled() {
+  return INSTALLED.map((item) => item.id)
 }
 
 export const useStudio = create<Studio>()(
@@ -296,7 +291,7 @@ export const useStudio = create<Studio>()(
               kind: "agent",
               agentId: agent.id,
               title: agent.name,
-              cwd: "~/helio",
+              cwd: "~/holine",
               branch: agent.worktree,
               status: "idle",
               hold: "idle",
@@ -313,14 +308,14 @@ export const useStudio = create<Studio>()(
               id,
               kind: "shell",
               title: "Shell",
-              cwd: "~/helio",
+              cwd: "~/holine",
               branch: "main",
               status: "idle",
               hold: "idle",
               plan: ["Shell ở gốc repo."],
-              lines: [{ id: nid("sys"), kind: "sys", text: "shell · ~/helio · main" }],
+              lines: [{ id: nid("sys"), kind: "sys", text: "shell · ~/holine · main" }],
             }
-        const panes = [...state.panes, pane].slice(-6)
+        const panes = [...state.panes, pane].slice(-12)
         set({
           panes,
           focusId: id,
@@ -410,15 +405,56 @@ export const useStudio = create<Studio>()(
               : machine,
           ),
         }),
-      toggleSkill: (id) => {
-        const enabled = get().enabled
-        set({ enabled: enabled.includes(id) ? enabled.filter((item) => item !== id) : [...enabled, id] })
+      toggleSkill: () => {
+        set({ enabled: reconcileEnabled() })
       },
       setStrategy: (strategy) => set({ strategy }),
+      begin: () => {
+        if (get().started && get().panes.length > 0) return
+        const agents = ROSTER.map(roomAgent)
+        const panes = agents.map((agent) => chatPane(agent))
+        set({
+          started: true,
+          agents,
+          panes,
+          focusId: panes[0].id,
+          layout: 3,
+          enabled: reconcileEnabled(),
+        })
+      },
+      addAgent: (name) => {
+        const clean = name.trim()
+        if (!clean) return
+        const id = nid("agent")
+        const slug = clean
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]+/g, "")
+          .slice(0, 16) || "agent"
+        const agent: Agent = {
+          id,
+          name: clean,
+          cli: slug,
+          model: "grok-4.5",
+          tokens: 0,
+          paused: false,
+          worktree: `wt/${slug}`,
+          note: "",
+        }
+        const pane = chatPane(agent, nid("pane"))
+        const state = get()
+        set({
+          started: true,
+          agents: [...state.agents, agent],
+          panes: [...state.panes, pane].slice(-12),
+          focusId: pane.id,
+        })
+      },
       reset: () => set({ ...demoData(), inflight: {} }),
     }),
     {
-      name: "helio-studio-v2",
+      name: "holine-studio-v1",
       skipHydration: true,
       partialize: (state) => ({
         panes: state.panes,
@@ -434,6 +470,7 @@ export const useStudio = create<Studio>()(
         series: state.series,
         heatmap: state.heatmap,
         blocked: state.blocked,
+        started: state.started,
         enabled: state.enabled,
         strategy: state.strategy,
         catalogRev: state.catalogRev,
@@ -443,8 +480,9 @@ export const useStudio = create<Studio>()(
         return {
           ...current,
           ...saved,
-          enabled: reconcileEnabled(saved.enabled, current.enabled, saved.catalogRev),
+          enabled: reconcileEnabled(),
           strategy: saved.strategy ?? current.strategy,
+          started: Boolean(saved.started),
           catalogRev: 2,
           inflight: {},
         }

@@ -6,7 +6,7 @@ import { useStudio } from "@/lib/studio/store"
 
 export const Route = createFileRoute("/repos/")({
   component: ReposPage,
-  head: () => ({ meta: [{ title: "Kho · Helio" }] }),
+  head: () => ({ meta: [{ title: "Kho · Holine" }] }),
 })
 
 function ReposPage() {

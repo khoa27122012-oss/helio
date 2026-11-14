@@ -1,9 +1,5 @@
-import type { Line, StudioData } from "./types"
+import type { StudioData } from "./types"
 import { defaultEnabled } from "@/lib/gateway/catalog"
-
-function line(id: string, kind: Line["kind"], text: string): Line {
-  return { id, kind, text }
-}
 
 function heat() {
   const out: number[] = []
@@ -47,147 +43,28 @@ export function Pane({ title, branch, status }: PaneProps) {
 }
 `
 
-const readme = `# Helio
+const readme = `# Holine
 
 Phòng điều khiển cho agent và kho mã.
 
 - Mỗi agent một worktree, không đụng main của nhau
 - Câu tiếng Việt hoặc lệnh thường, cùng một ô
 - Lệnh nguy hiểm bị chặn trước khi chạy
-- Duyệt pull request ngay cạnh terminal
-
-## Chạy thử
-
-Gõ "rà soát pull request đang mở" trong pane Grok.
+- Duyệt pull request ngay cạnh khung chat
 `
 
 export function demoData(): StudioData {
   return {
-    focusId: "p-grok",
-    layout: 2,
-    blocked: 3,
-    panes: [
-      {
-        id: "p-grok",
-        kind: "agent",
-        agentId: "grok",
-        title: "Grok",
-        cwd: "~/helio",
-        branch: "wt/grok-safety",
-        status: "idle",
-        hold: "idle",
-        plan: [
-          "Chỉ dọn file trong worktree của pane.",
-          "Chặn rm -rf, sudo và push --force.",
-          "Xin duyệt trên Duyệt trước khi merge.",
-        ],
-        lines: [
-          line("g1", "sys", "Grok · grok-4.5 · worktree wt/grok-safety"),
-          line("g2", "in", "kiểm tra hàng rào trước khi agent chạy git clean"),
-          line("g3", "ok", "An toàn · lệnh hẹp trong worktree, không đụng main"),
-          line("g4", "out", "1. git clean chỉ được trong thư mục wt/*"),
-          line("g5", "out", "2. Chặn rm -rf, sudo, reset --hard, push --force"),
-          line("g6", "out", "3. Lý do chặn hiện trong pane và được đếm ở thanh trên"),
-          line("g7", "sys", "Sẵn sàng. Câu tiếng Việt đi qua Grok 4.5. Lệnh shell ở lại phòng."),
-        ],
-      },
-      {
-        id: "p-claude",
-        kind: "agent",
-        agentId: "claude",
-        title: "Claude",
-        cwd: "~/helio",
-        branch: "wt/claude-review",
-        status: "waiting",
-        hold: "waiting",
-        plan: [
-          "Đọc PR đang mở.",
-          "Không merge khi CI lỗi hoặc còn là bản nháp.",
-          "Chờ bạn duyệt trên mục Duyệt.",
-        ],
-        lines: [
-          line("c1", "sys", "Claude · opus · wt/claude-review"),
-          line("c2", "in", "rà soát pull request đang mở"),
-          line("c3", "ok", "Hai PR mở. Một bản nháp đang chờ CI."),
-          line("c4", "out", "helio · feat: mỗi agent một worktree — kiểm tra đạt"),
-          line("c5", "out", "helio · fix: chặn force-push — kiểm tra đạt, diff ngắn"),
-          line("c6", "sys", "Mình không merge cho đến khi bạn bấm trên Duyệt."),
-        ],
-      },
-      {
-        id: "p-shell",
-        kind: "shell",
-        title: "Shell",
-        cwd: "~/helio",
-        branch: "main",
-        status: "idle",
-        hold: "idle",
-        plan: ["Shell thường ở gốc repo.", "Agent làm việc ở worktree riêng."],
-        lines: [
-          line("s1", "sys", "shell · ~/helio · main"),
-          line("s2", "in", "git status"),
-          line("s3", "out", "On branch main"),
-          line("s4", "out", "nothing to commit, working tree clean"),
-          line("s5", "sys", "Worktree của agent nằm cạnh repo, không chung thư mục."),
-        ],
-      },
-    ],
-    agents: [
-      {
-        id: "grok",
-        name: "Grok",
-        cli: "grok",
-        model: "grok-4.5",
-        tokens: 18420,
-        paused: false,
-        worktree: "wt/grok-safety",
-        note: "Hàng rào lệnh, worktree, và Grok 4.5 khi câu không phải lệnh shell.",
-      },
-      {
-        id: "claude",
-        name: "Claude",
-        cli: "claude",
-        model: "opus",
-        tokens: 24110,
-        paused: false,
-        worktree: "wt/claude-review",
-        note: "Đọc diff, viết nhận xét, không tự merge.",
-      },
-      {
-        id: "codex",
-        name: "Codex",
-        cli: "codex",
-        model: "gpt",
-        tokens: 9640,
-        paused: false,
-        worktree: "wt/codex-tests",
-        note: "Sinh test cho diff đang mở.",
-      },
-      {
-        id: "gemini",
-        name: "Gemini",
-        cli: "gemini",
-        model: "gemini",
-        tokens: 4280,
-        paused: true,
-        worktree: "wt/gemini-docs",
-        note: "Tạm dừng · đang viết tài liệu Moss.",
-      },
-      {
-        id: "qwen",
-        name: "Qwen",
-        cli: "qwen",
-        model: "qwen",
-        tokens: 3110,
-        paused: false,
-        worktree: "wt/qwen-ui",
-        note: "Chỉnh Lantern, token nhẹ.",
-      },
-    ],
+    focusId: "",
+    layout: 3,
+    blocked: 0,
+    started: false,
+    panes: [],
+    agents: [],
     repos: [
       {
-        slug: "helio",
-        name: "helio",
+        slug: "holine",
+        name: "holine",
         description: "Phòng điều khiển agent, terminal và kho mã trên cùng một mặt bàn.",
         language: "TypeScript",
         stars: 1284,
@@ -300,7 +177,7 @@ export function demoData(): StudioData {
     issues: [
       {
         id: "i1",
-        repo: "helio",
+        repo: "holine",
         title: "Hàng rào chặn nhầm git clean trong worktree",
         body: "git clean -fd trong wt/grok-safety bị coi là rm. Cần cho phép khi đường dẫn nằm trong worktree và không phải -rf ngoài gốc.",
         labels: ["an toàn"],
@@ -310,7 +187,7 @@ export function demoData(): StudioData {
       },
       {
         id: "i2",
-        repo: "helio",
+        repo: "holine",
         title: "Ô lệnh trên điện thoại bị bàn phím che",
         body: "Khi bàn phím mở, nút gửi phải còn trong vùng nhìn. Pane nên cuộn tới dòng cuối.",
         labels: ["ui"],
@@ -332,7 +209,7 @@ export function demoData(): StudioData {
     pulls: [
       {
         id: "p1",
-        repo: "helio",
+        repo: "holine",
         title: "Mỗi agent một worktree",
         body: "Shell ở gốc repo. Agent nhận thư mục riêng để một lệnh checkout không phá pane bên cạnh.",
         author: "Claude",
@@ -360,7 +237,7 @@ export function demoData(): StudioData {
       },
       {
         id: "p2",
-        repo: "helio",
+        repo: "holine",
         title: "Chặn force-push trước khi tới remote",
         body: "push --force và -f dừng trong pane, kèm lý do. Push thường chỉ được nhắc, không tự chạy.",
         author: "Grok",
@@ -442,7 +319,7 @@ export function demoData(): StudioData {
         latency: "12 ms",
         online: true,
         role: "Máy bạn đang ngồi",
-        files: ["~/helio/README.md", "~/helio/src/safety/rail.ts", "~/wt/grok-safety"],
+        files: ["~/holine/README.md", "~/holine/src/safety/rail.ts", "~/wt/grok-safety"],
       },
       {
         id: "build",
@@ -452,7 +329,7 @@ export function demoData(): StudioData {
         latency: "48 ms",
         online: true,
         role: "CI và hàng đợi Tide",
-        files: ["/srv/tide/jobs", "/var/log/helio/build.log", "/home/ci/.ssh"],
+        files: ["/srv/tide/jobs", "/var/log/holine/build.log", "/home/ci/.ssh"],
       },
       {
         id: "edge",
@@ -512,16 +389,8 @@ export function demoData(): StudioData {
         safety: "Không nới rule trong câu trả lời.",
       },
     ],
-    activity: [
-      { id: "a1", text: "Grok chặn một lần push --force trên wt/grok-safety", time: "2 giờ trước" },
-      { id: "a2", text: "Claude mở nhận xét trên PR worktree", time: "hôm qua" },
-      { id: "a3", text: "build-01 chạy test Tide, 42 việc đạt", time: "hôm qua" },
-      { id: "a4", text: "Qwen merge palette amber vào Lantern", time: "4 ngày trước" },
-    ],
-    series: [12, 18, 14, 22, 19, 30, 28, 24, 33, 29, 41, 36, 38, 44].map((n, i) => ({
-      day: String(i + 1),
-      tokens: n * 100,
-    })),
+    activity: [],
+    series: Array.from({ length: 14 }, (_, i) => ({ day: String(i + 1), tokens: 0 })),
     heatmap: heat(),
     enabled: defaultEnabled(),
     strategy: "bridge",

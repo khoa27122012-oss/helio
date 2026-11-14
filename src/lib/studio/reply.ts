@@ -107,10 +107,10 @@ function command(input: string, ctx: ReplyCtx): Reply | null {
       status: "idle",
       plan: ["Liệt kê worktree. Không thêm, không xóa."],
       lines: [
-        { kind: "out", text: "~/helio              a1c3e90 [main]" },
+        { kind: "out", text: "~/holine              a1c3e90 [main]" },
         { kind: "out", text: "../wt/grok-safety    a1c3e90 [wt/grok-safety]" },
         { kind: "out", text: "../wt/claude-review  b90d11a [wt/claude-review]" },
-        { kind: "sys", text: "Mỗi agent một thư mục. Shell ở lại ~/helio." },
+        { kind: "sys", text: "Mỗi agent một thư mục. Shell ở lại ~/holine." },
       ],
     }
   }
@@ -128,7 +128,7 @@ function command(input: string, ctx: ReplyCtx): Reply | null {
   if (/^npm (test|run test)\b/i.test(input)) {
     return {
       status: "idle",
-      plan: ["Báo kết quả test Tide và Helio."],
+      plan: ["Báo kết quả test Tide và Holine."],
       lines: [
         { kind: "out", text: "rail.test.ts      đạt" },
         { kind: "out", text: "worktree.test.ts  đạt" },
@@ -189,8 +189,8 @@ function natural(input: string, ctx: ReplyCtx): Reply {
     lines.push({ kind: "out", text: "git worktree add ../wt/agent -b wt/agent" })
     lines.push({ kind: "sys", text: "Shell ở lại gốc. Không xóa worktree đang có người." })
   } else if (/log|ci|kiểm tra/i.test(input)) {
-    lines.push({ kind: "out", text: "helio build · đạt" })
-    lines.push({ kind: "out", text: "helio test · đạt" })
+    lines.push({ kind: "out", text: "holine build · đạt" })
+    lines.push({ kind: "out", text: "holine test · đạt" })
     lines.push({ kind: "out", text: "quay test · lỗi vì gpu-box đang tắt, không phải vì diff" })
   } else if (/hàng rào|an toàn|chặn/i.test(input)) {
     lines.push({ kind: "out", text: "Chặn: rm -rf, sudo, git reset --hard, git push --force, mkfs" })

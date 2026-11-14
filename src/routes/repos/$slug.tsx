@@ -9,7 +9,7 @@ import { cn } from "@/lib/cn"
 
 export const Route = createFileRoute("/repos/$slug")({
   component: RepoPage,
-  head: () => ({ meta: [{ title: "Kho · Helio" }] }),
+  head: () => ({ meta: [{ title: "Kho · Holine" }] }),
 })
 
 function RepoPage() {

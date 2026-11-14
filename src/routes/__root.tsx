@@ -9,15 +9,15 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Helio" },
+      { title: "Holine" },
       {
         name: "description",
-        content: "Helio — phòng điều khiển agent và kho mã, lấy cảm hứng từ MXterm.",
+        content: "Holine — phòng điều khiển agent và kho mã.",
       },
       { name: "theme-color", content: "#101412" },
     ],
     links: [
-      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+      { rel: "icon", type: "image/png", href: "/logo.png" },
       { rel: "stylesheet", href: appCss },
       {
         rel: "stylesheet",
