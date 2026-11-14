@@ -2,9 +2,10 @@ import { createServerFn } from "@tanstack/react-start"
 import { authMiddleware } from "@/lib/auth/middleware"
 import { cleanKey } from "./key"
 import { plainText } from "./plain"
+import { probeKey } from "./probe"
+import { VENDORS, isVendor, vendorHeaders, type Vendor, type VendorId } from "./vendors"
 
 type RouteName = "bridge" | "shield"
-type Provider = "grok" | "gemini"
 
 type AskInput = {
   prompt: string
@@ -14,12 +15,12 @@ type AskInput = {
   tight: boolean
   plain: boolean
   directive: string
-  provider: Provider
+  provider: VendorId
+  model: string
   apiKey: string
 }
 
 const RAIL = /\brm\s+-[a-z]*r[a-z]*f\b|git\s+reset\s+--hard|\bgit\s+push\b[^\n]{0,40}(?:--force|\s-f\b)|\bdrop\s+(?:database|table)\b|\bmkfs\b|\bdd\s+if=/i
-const GEMINI = "gemini-3.8-flash"
 
 function clip(value: unknown, max: number) {
   return String(value ?? "").trim().slice(0, max)
@@ -31,14 +32,35 @@ function hideKey(message: string, key: string) {
 }
 
 function errorText(body: unknown, key: string) {
-  const err = body as { error?: { message?: string } | string }
-  const message = typeof err.error === "string" ? err.error : err.error?.message ?? ""
+  const err = body as { error?: { message?: string } | string; message?: string }
+  const message = typeof err.error === "string" ? err.error : err.error?.message || err.message || ""
   return hideKey(message, key)
+}
+
+function takeKey(value: unknown) {
+  const key = cleanKey(value)
+  if (key === null) throw new Error("Dán khóa API, không dán file JSON.")
+  return key
+}
+
+function takeModel(value: unknown, fallback: string) {
+  const model = String(value ?? "").trim().replace(/^models\//, "")
+  if (!model || model.length > 80 || !/^[\w./:-]+$/.test(model)) return fallback
+  return model
 }
 
 export const aiStatus = createServerFn({ method: "GET" }).handler(async () => {
   return { ready: Boolean(process.env.XAI_API_KEY) }
 })
+
+export const checkKey = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: { apiKey?: string }) => {
+    const apiKey = takeKey(input?.apiKey)
+    if (!apiKey) throw new Error("Nhập khóa trước.")
+    return { apiKey }
+  })
+  .handler(async ({ data }) => probeKey(data.apiKey))
 
 function systemText(data: { tight: boolean; directive: string; skills: string; context: string; plain: boolean }) {
   return (
@@ -69,16 +91,58 @@ function systemText(data: { tight: boolean; directive: string; skills: string; c
     .join("\n")
 }
 
-async function completeGrok(apiKey: string, system: string, prompt: string, maxTokens: number) {
-  return fetch("https://api.x.ai/v1/chat/completions", {
+async function complete(vendor: Vendor, apiKey: string, model: string, system: string, prompt: string, maxTokens: number) {
+  if (vendor.kind === "gemini") {
+    return fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: "POST",
+      redirect: "manual",
+      signal: AbortSignal.timeout(25000),
+      headers: vendorHeaders(vendor, apiKey, true),
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: system }] },
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: { maxOutputTokens: maxTokens, temperature: 0.3 },
+      }),
+    })
+  }
+  if (vendor.kind === "anthropic") {
+    return fetch(vendor.chatUrl, {
+      method: "POST",
+      redirect: "manual",
+      signal: AbortSignal.timeout(25000),
+      headers: vendorHeaders(vendor, apiKey, true),
+      body: JSON.stringify({
+        model,
+        max_tokens: maxTokens,
+        temperature: 0.3,
+        system,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    })
+  }
+  if (vendor.kind === "cohere") {
+    return fetch(vendor.chatUrl, {
+      method: "POST",
+      redirect: "manual",
+      signal: AbortSignal.timeout(25000),
+      headers: vendorHeaders(vendor, apiKey, true),
+      body: JSON.stringify({
+        model,
+        temperature: 0.3,
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: prompt },
+        ],
+      }),
+    })
+  }
+  return fetch(vendor.chatUrl, {
     method: "POST",
+    redirect: "manual",
     signal: AbortSignal.timeout(25000),
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
+    headers: vendorHeaders(vendor, apiKey, true),
     body: JSON.stringify({
-      model: "grok-4.5",
+      model,
       max_tokens: maxTokens,
       temperature: 0.3,
       messages: [
@@ -89,20 +153,40 @@ async function completeGrok(apiKey: string, system: string, prompt: string, maxT
   })
 }
 
-async function completeGemini(apiKey: string, system: string, prompt: string, maxTokens: number) {
-  return fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI}:generateContent`, {
-    method: "POST",
-    signal: AbortSignal.timeout(25000),
-    headers: {
-      "Content-Type": "application/json",
-      "x-goog-api-key": apiKey,
-    },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: system }] },
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { maxOutputTokens: maxTokens, temperature: 0.3 },
-    }),
-  })
+function answerText(vendor: Vendor, body: unknown) {
+  const data = body as {
+    choices?: { message?: { content?: string } }[]
+    candidates?: { content?: { parts?: { text?: string }[] } }[]
+    content?: { text?: string }[]
+    message?: { content?: { text?: string }[] | string }
+    text?: string
+  }
+  if (vendor.kind === "gemini") {
+    return data.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("").trim() ?? ""
+  }
+  if (vendor.kind === "anthropic") {
+    return data.content?.map((part) => part.text ?? "").join("").trim() ?? ""
+  }
+  if (vendor.kind === "cohere") {
+    const content = data.message?.content
+    if (typeof content === "string") return content.trim()
+    return content?.map((part) => part.text ?? "").join("").trim() || data.text?.trim() || ""
+  }
+  return data.choices?.[0]?.message?.content?.trim() ?? ""
+}
+
+function tokenCount(vendor: Vendor, body: unknown, system: string, prompt: string, text: string) {
+  const data = body as {
+    usage?: { total_tokens?: number; input_tokens?: number; output_tokens?: number }
+    usageMetadata?: { totalTokenCount?: number }
+    meta?: { billed_units?: { input_tokens?: number; output_tokens?: number } }
+  }
+  const direct =
+    data.usage?.total_tokens ||
+    data.usageMetadata?.totalTokenCount ||
+    (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0) ||
+    (data.meta?.billed_units?.input_tokens || 0) + (data.meta?.billed_units?.output_tokens || 0)
+  return direct || Math.ceil((system.length + prompt.length + text.length) / 4)
 }
 
 function guard(text: string) {
@@ -111,8 +195,8 @@ function guard(text: string) {
   return text
 }
 
-async function readGrok(res: Response, key: string, plain: boolean, system: string, prompt: string) {
-  if (!res.ok) {
+async function readAnswer(vendor: Vendor, res: Response, key: string, plain: boolean, system: string, prompt: string) {
+  if (res.status < 200 || res.status >= 300) {
     let extra = ""
     try {
       extra = errorText(await res.json(), key)
@@ -121,62 +205,21 @@ async function readGrok(res: Response, key: string, plain: boolean, system: stri
     }
     const why =
       res.status === 400 || res.status === 401 || res.status === 403
-        ? "Khóa Grok bị từ chối."
+        ? `Khóa ${vendor.label} bị từ chối.`
         : res.status === 429
-          ? "Grok đang giới hạn lượt."
-          : `Grok không trả lời (${res.status}).`
+          ? `${vendor.label} đang giới hạn lượt.`
+          : `${vendor.label} không trả lời (${res.status}).`
     return { ok: false as const, error: extra ? `${why} ${extra}` : why, tier: "local" as const }
   }
-  const body = (await res.json()) as {
-    choices?: { message?: { content?: string } }[]
-    usage?: { total_tokens?: number }
-  }
-  let text = body.choices?.[0]?.message?.content?.trim() ?? ""
+  const body = await res.json()
+  let text = answerText(vendor, body)
   if (plain) {
     const cleaned = plainText(text)
     if (cleaned) text = cleaned
   }
   text = guard(text)
-  if (!text) return { ok: false as const, error: "Grok trả về rỗng.", tier: "local" as const }
-  const tokens = body.usage?.total_tokens || Math.ceil((system.length + prompt.length + text.length) / 4)
-  return { ok: true as const, text, tokens, tier: "grok" as const }
-}
-
-async function readGemini(res: Response, key: string, plain: boolean, system: string, prompt: string) {
-  if (!res.ok) {
-    let extra = ""
-    try {
-      extra = errorText(await res.json(), key)
-    } catch {
-      extra = ""
-    }
-    const why =
-      res.status === 400 || res.status === 401 || res.status === 403
-        ? "Khóa Gemini bị từ chối. Tạo khóa sau khi đăng nhập tài khoản Google."
-        : res.status === 429
-          ? "Gemini đang giới hạn lượt."
-          : `Gemini không trả lời (${res.status}).`
-    return { ok: false as const, error: extra ? `${why} ${extra}` : why, tier: "local" as const }
-  }
-  const body = (await res.json()) as {
-    candidates?: { content?: { parts?: { text?: string }[] } }[]
-    usageMetadata?: { totalTokenCount?: number }
-  }
-  let text = body.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("").trim() ?? ""
-  if (plain) {
-    const cleaned = plainText(text)
-    if (cleaned) text = cleaned
-  }
-  text = guard(text)
-  if (!text) return { ok: false as const, error: "Gemini trả về rỗng.", tier: "local" as const }
-  const tokens = body.usageMetadata?.totalTokenCount || Math.ceil((system.length + prompt.length + text.length) / 4)
-  return { ok: true as const, text, tokens, tier: "gemini" as const }
-}
-
-function takeKey(value: unknown) {
-  const key = cleanKey(value)
-  if (key === null) throw new Error("Dán khóa API, không dán file JSON.")
-  return key
+  if (!text) return { ok: false as const, error: `${vendor.label} trả về rỗng.`, tier: "local" as const }
+  return { ok: true as const, text, tokens: tokenCount(vendor, body, system, prompt, text), tier: vendor.label }
 }
 
 export const askHelio = createServerFn({ method: "POST" })
@@ -185,7 +228,8 @@ export const askHelio = createServerFn({ method: "POST" })
     const prompt = clip(input?.prompt, 2000)
     if (!prompt) throw new Error("Thiếu câu hỏi")
     const route: RouteName = input?.route === "shield" ? "shield" : "bridge"
-    const provider: Provider = input?.provider === "gemini" ? "gemini" : "grok"
+    const provider: VendorId = isVendor(input?.provider) ? input.provider : "grok"
+    const vendor = VENDORS[provider]
     return {
       prompt,
       skills: clip(input?.skills, 2200),
@@ -195,36 +239,29 @@ export const askHelio = createServerFn({ method: "POST" })
       plain: Boolean(input?.plain),
       directive: clip(input?.directive, 1200),
       provider,
+      model: takeModel(input?.model, vendor.model),
       apiKey: takeKey(input?.apiKey),
     }
   })
   .handler(async ({ data }) => {
-    const apiKey = data.provider === "gemini" ? data.apiKey : data.apiKey || process.env.XAI_API_KEY || ""
+    const vendor = VENDORS[data.provider]
+    const apiKey = data.provider === "grok" ? data.apiKey || process.env.XAI_API_KEY || "" : data.apiKey
     if (!apiKey) {
-      const error =
-        data.provider === "gemini"
-          ? "Agent này cần khóa Gemini. Nhập ở mục Agent."
-          : "Bản này chưa gắn Grok."
-      return { ok: false as const, error, tier: "local" as const }
+      return {
+        ok: false as const,
+        error: data.provider === "grok" ? "Bản này chưa gắn Grok." : "Agent này cần khóa. Nhập ở mục Agent.",
+        tier: "local" as const,
+      }
     }
-
     const system = systemText(data)
     const maxTokens = data.route === "shield" ? 420 : 520
     try {
-      if (data.provider === "gemini") {
-        const res = await completeGemini(apiKey, system, data.prompt, maxTokens)
-        return readGemini(res, apiKey, data.plain, system, data.prompt)
+      let res = await complete(vendor, apiKey, data.model, system, data.prompt, maxTokens)
+      if (!res.ok && data.provider === "grok" && data.route === "bridge" && res.status >= 500) {
+        res = await complete(vendor, apiKey, data.model, system, data.prompt, maxTokens)
       }
-      let res = await completeGrok(apiKey, system, data.prompt, maxTokens)
-      if (!res.ok && data.route === "bridge" && res.status >= 500) {
-        res = await completeGrok(apiKey, system, data.prompt, maxTokens)
-      }
-      return readGrok(res, apiKey, data.plain, system, data.prompt)
+      return readAnswer(vendor, res, apiKey, data.plain, system, data.prompt)
     } catch {
-      return {
-        ok: false as const,
-        error: data.provider === "gemini" ? "Không nối được Gemini." : "Không nối được Grok.",
-        tier: "local" as const,
-      }
+      return { ok: false as const, error: `Không nối được ${vendor.label}.`, tier: "local" as const }
     }
   })

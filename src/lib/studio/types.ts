@@ -1,3 +1,5 @@
+import type { VendorId } from "@/lib/gateway/vendors"
+
 export type StrategyId = "bridge" | "shield" | "local"
 
 export type LineKind = "in" | "out" | "sys" | "ok" | "block"
@@ -24,7 +26,7 @@ export type Pane = {
   lines: Line[]
 }
 
-export type AgentProvider = "browser" | "grok" | "gemini"
+export type AgentProvider = "browser" | VendorId
 
 export type Agent = {
   id: string

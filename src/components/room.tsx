@@ -5,6 +5,7 @@ import { SignedOut } from "@/lib/auth/gates"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/cn"
 import { strategyName } from "@/lib/gateway/catalog"
+import { vendorLabel } from "@/lib/gateway/vendors"
 import type { Line, Pane } from "@/lib/studio/types"
 import { useStudio } from "@/lib/studio/store"
 
@@ -144,6 +145,17 @@ export function Room() {
   const current = panes.find((pane) => pane.id === focusId) ?? panes[0]
   const shown = zoom && current ? [current] : panes
   const focusedAgent = agents.find((agent) => agent.id === current?.agentId)
+  const connected = agents.filter((agent) => agent.apiKey)
+
+  function openNamed(agentId: string) {
+    const pane = [...panes].reverse().find((item) => item.agentId === agentId)
+    setZoom(false)
+    if (pane) {
+      focus(pane.id)
+      return
+    }
+    addPane(agentId)
+  }
 
   function back() {
     if (zoom) {
@@ -312,6 +324,27 @@ export function Room() {
           </button>
         ))}
       </div>
+      {connected.length > 0 ? (
+        <div className="flex gap-2 overflow-x-auto px-3 pt-3" aria-label="AI đã kết nối">
+          <span className="flex h-11 shrink-0 items-center text-xs text-mist">Đã nối</span>
+          {connected.map((agent) => {
+            const open = current?.agentId === agent.id
+            return (
+              <button
+                key={agent.id}
+                type="button"
+                onClick={() => openNamed(agent.id)}
+                className={cn(
+                  "h-11 shrink-0 rounded-md px-3 text-sm font-medium",
+                  open ? "bg-lamp text-ink" : "bg-panel text-paper",
+                )}
+              >
+                {agent.name}
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
       <div className={cn("flex min-h-0 flex-1 flex-col", layout !== 3 && "xl:flex-row")}>
         <div
           className={cn(
@@ -356,10 +389,26 @@ export function Room() {
             <Link to="/lenh" className="inline-flex h-11 items-center text-sm text-lamp">
               File lệnh{directive.trim() ? " · đang có" : ""}
             </Link>
-            <h3 className="mt-5 text-sm font-medium">AI</h3>
-            <p className="mt-2 text-sm leading-6 text-paper">
-              Khung không khóa đi qua tài khoản Google. Khóa API, tên và nhiệm vụ đặt trong Agent.
-            </p>
+            <h3 className="mt-5 text-sm font-medium">AI đã kết nối</h3>
+            {connected.length === 0 ? (
+              <p className="mt-2 text-sm leading-6 text-paper">
+                Chưa có khóa nào được chấp nhận. Ở mục Agent, dán khóa rồi đặt tên. Phòng hiện đúng tên đó.
+              </p>
+            ) : (
+              <ul className="mt-2 flex flex-col gap-2">
+                {connected.map((agent) => (
+                  <li key={agent.id}>
+                    <button type="button" onClick={() => openNamed(agent.id)} className="text-left text-sm font-medium text-paper">
+                      {agent.name}
+                    </button>
+                    <p className="font-mono text-xs text-mist">
+                      {vendorLabel(agent.provider)}
+                      {agent.task ? ` · ${agent.task}` : ""}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
             <Link to="/agents" className="inline-flex h-11 items-center text-sm text-lamp">
               Mục Agent
             </Link>

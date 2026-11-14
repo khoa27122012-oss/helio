@@ -11,7 +11,7 @@ Phòng điều khiển cho agent và kho mã. Nhiều khung chat, mỗi agent m�
 - Plugin luôn bật. Skill tìm trên GitHub, dán link, hoặc tải file .md
 - File lệnh `lenh.md` siết việc model được làm. Hàng rào vẫn thắng
 - Kết nối khóa đã bỏ. AI trên trình duyệt cần đăng nhập Google, không cần khóa
-- Khóa API, tên và nhiệm vụ đặt trong mục Agent
+- Khóa API dán trong mục Agent. Holine tự nhận nhà cung cấp và chỉ thêm khi khóa đúng. Phòng hiện tên đã đặt.
 - Câu không phải lệnh gọi model sau khi đăng nhập. Lệnh shell không gọi model
 
 ## Bảng lệnh

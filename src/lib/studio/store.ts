@@ -3,10 +3,11 @@ import { persist } from "zustand/middleware"
 import { askHelio } from "@/lib/gateway/ask"
 import { INSTALLED, skillDigest } from "@/lib/gateway/catalog"
 import { cleanKey } from "@/lib/gateway/key"
+import { VENDORS, guessVendors, isVendor, vendorLabel, type VendorId } from "@/lib/gateway/vendors"
 import { needsModel, planReply, type Reply } from "./reply"
 import { demoData } from "./seed"
 import { chatPane, ROSTER, roomAgent } from "./roster"
-import type { Agent, AgentProvider, Pane, PaneStatus, StudioData, StrategyId } from "./types"
+import type { Agent, Pane, PaneStatus, StudioData, StrategyId } from "./types"
 
 type Actions = {
   tick: () => void
@@ -28,7 +29,7 @@ type Actions = {
   setDirective: (text: string) => void
   addExtra: (skill: { name: string; source: string; text: string }) => void
   removeExtra: (id: string) => void
-  addKeyed: (input: { name: string; apiKey: string; task: string; provider: "grok" | "gemini" }) => boolean
+  addKeyed: (input: { name: string; apiKey: string; task: string; provider: VendorId; model: string }) => boolean
   setTask: (id: string, task: string) => void
   begin: () => void
   addAgent: (name: string) => void
@@ -206,12 +207,8 @@ export const useStudio = create<Studio>()(
         }
 
         const keyed = Boolean(agent?.apiKey)
-        const provider = agent?.provider === "gemini" ? "gemini" : "grok"
-        const via = keyed
-          ? provider === "gemini"
-            ? "Đang hỏi Gemini"
-            : "Đang hỏi Grok · khóa của agent"
-          : "Đang hỏi qua trình duyệt"
+        const provider: VendorId = isVendor(agent?.provider ?? "") ? (agent?.provider as VendorId) : "grok"
+        const via = keyed ? `Đang hỏi ${agent?.name ?? vendorLabel(provider)}` : "Đang hỏi qua trình duyệt"
         const ticket = nid("ask")
         set({
           inflight: { ...state.inflight, [paneId]: ticket },
@@ -237,6 +234,7 @@ export const useStudio = create<Studio>()(
             tight: state.enabled.some((id) => id === "token-shield" || id === "prefix-cache" || id === "on-demand"),
             plain: state.enabled.includes("plain"),
             provider: keyed ? provider : "grok",
+            model: keyed ? agent?.model || VENDORS[provider].model : "grok-4.5",
             apiKey: agent?.apiKey ?? "",
           },
         })
@@ -261,7 +259,7 @@ export const useStudio = create<Studio>()(
               .slice(0, 14)
             const done: Reply = {
               status: "idle",
-              plan: [`${result.tokens} token · ${result.tier === "gemini" ? "Gemini" : "Grok 4.5"}`],
+              plan: [`${result.tokens} token · ${result.tier}`],
               lines: [
                 { kind: "ok", text: `${result.tokens} token` },
                 ...answer.map((line) => ({ kind: "out" as const, text: line })),
@@ -319,24 +317,7 @@ export const useStudio = create<Studio>()(
         const agent = state.agents.find((item) => item.id === agentId)
         const id = nid("pane")
         const pane: Pane = agent
-          ? {
-              id,
-              kind: "agent",
-              agentId: agent.id,
-              title: agent.name,
-              cwd: "~/holine",
-              branch: agent.worktree,
-              status: "idle",
-              hold: "idle",
-              plan: [`${agent.name} trong ${agent.worktree}.`, agent.note],
-              lines: [
-                {
-                  id: nid("sys"),
-                  kind: "sys",
-                  text: `${agent.name} · ${agent.model} · ${agent.worktree}`,
-                },
-              ],
-            }
+          ? chatPane(agent, id)
           : {
               id,
               kind: "shell",
@@ -447,8 +428,9 @@ export const useStudio = create<Studio>()(
         const key = cleanKey(input.apiKey)
         const name = input.name.trim().slice(0, 40)
         const task = input.task.trim().slice(0, 400)
-        if (key === null || !key || !name || task.length < 2) return false
-        const provider: AgentProvider = input.provider === "gemini" ? "gemini" : "grok"
+        if (key === null || !key || !name || task.length < 2 || !isVendor(input.provider)) return false
+        const provider = input.provider
+        const model = input.model.trim().slice(0, 80) || VENDORS[provider].model
         const id = nid("agent")
         const slug =
           name
@@ -461,7 +443,7 @@ export const useStudio = create<Studio>()(
           id,
           name,
           cli: slug,
-          model: provider === "gemini" ? "gemini-3.8-flash" : "grok-4.5",
+          model,
           tokens: 0,
           paused: false,
           worktree: `wt/${slug}`,
@@ -580,12 +562,28 @@ export const useStudio = create<Studio>()(
           directive: typeof saved.directive === "string" ? saved.directive : "",
           extraSkills: Array.isArray(saved.extraSkills) ? saved.extraSkills.slice(0, 12) : [],
           agents: Array.isArray(saved.agents)
-            ? saved.agents.map((agent) => ({
-                ...agent,
-                apiKey: cleanKey(agent.apiKey) || "",
-                task: typeof agent.task === "string" ? agent.task.slice(0, 400) : "",
-                provider: agent.provider === "gemini" || agent.provider === "grok" ? agent.provider : "browser",
-              }))
+            ? saved.agents.map((agent) => {
+                const apiKey = cleanKey(agent.apiKey) || ""
+                const provider: Agent["provider"] =
+                  agent.provider !== "browser" && isVendor(agent.provider)
+                    ? agent.provider
+                    : apiKey
+                      ? (guessVendors(apiKey)[0] ?? "browser")
+                      : "browser"
+                const model =
+                  typeof agent.model === "string" && agent.model.trim()
+                    ? agent.model.trim().slice(0, 80)
+                    : provider !== "browser"
+                      ? VENDORS[provider].model
+                      : "grok-4.5"
+                return {
+                  ...agent,
+                  apiKey,
+                  model,
+                  task: typeof agent.task === "string" ? agent.task.slice(0, 400) : "",
+                  provider,
+                }
+              })
             : current.agents,
           catalogRev: 2,
           inflight: {},
