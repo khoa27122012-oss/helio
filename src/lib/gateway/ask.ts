@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start"
+import { authMiddleware } from "@/lib/auth/middleware"
 import { cleanKey } from "./key"
 import { plainText } from "./plain"
 
@@ -178,41 +179,8 @@ function takeKey(value: unknown) {
   return key
 }
 
-export const probeModel = createServerFn({ method: "POST" })
-  .validator((input: { provider?: string; apiKey?: string }) => {
-    const provider: Provider = input?.provider === "gemini" ? "gemini" : "grok"
-    return { provider, apiKey: takeKey(input?.apiKey) }
-  })
-  .handler(async ({ data }) => {
-    const own = Boolean(data.apiKey)
-    const key = data.provider === "gemini" ? data.apiKey : data.apiKey || process.env.XAI_API_KEY || ""
-    if (!key) {
-      return {
-        ok: false as const,
-        error: data.provider === "gemini" ? "Chưa có khóa Gemini." : "Chưa có khóa Grok.",
-      }
-    }
-    const system = "Trả lời đúng một từ tiếng Việt."
-    const prompt = "Sẵn sàng chưa?"
-    try {
-      const res =
-        data.provider === "gemini"
-          ? await completeGemini(key, system, prompt, 16)
-          : await completeGrok(key, system, prompt, 16)
-      const result =
-        data.provider === "gemini"
-          ? await readGemini(res, key, true, system, prompt)
-          : await readGrok(res, key, true, system, prompt)
-      if (!result.ok) return { ok: false as const, error: result.error }
-      const who = data.provider === "gemini" ? "Gemini" : "Grok 4.5"
-      const source = own ? "khóa bạn dán" : "khóa của bản Holine"
-      return { ok: true as const, detail: `${who} trả lời được. Đang dùng ${source}.` }
-    } catch {
-      return { ok: false as const, error: data.provider === "gemini" ? "Không nối được Gemini." : "Không nối được Grok." }
-    }
-  })
-
 export const askHelio = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
   .validator((input: AskInput) => {
     const prompt = clip(input?.prompt, 2000)
     if (!prompt) throw new Error("Thiếu câu hỏi")
@@ -235,8 +203,8 @@ export const askHelio = createServerFn({ method: "POST" })
     if (!apiKey) {
       const error =
         data.provider === "gemini"
-          ? "Khung Gemini chưa có khóa. Mở Kết nối, đăng nhập Google AI Studio, rồi dán khóa."
-          : "Grok chưa có khóa. Dán khóa xAI trong mục Kết nối."
+          ? "Agent này cần khóa Gemini. Nhập ở mục Agent."
+          : "Bản này chưa gắn Grok."
       return { ok: false as const, error, tier: "local" as const }
     }
 

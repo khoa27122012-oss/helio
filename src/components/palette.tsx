@@ -25,12 +25,11 @@ export function Palette({ open, onClose }: { open: boolean; onClose: () => void 
       { id: "room", group: "Đi tới", label: "Phòng điều khiển", hint: "Pane, agent, shell", run: go("/") },
       { id: "repos", group: "Đi tới", label: "Kho mã", hint: "File, commit, sao", run: go("/repos") },
       { id: "flow", group: "Đi tới", label: "Duyệt", hint: "Việc và pull request", run: go("/flow") },
-      { id: "agents", group: "Đi tới", label: "Agent", hint: "Worktree và token", run: go("/agents") },
+      { id: "agents", group: "Đi tới", label: "Agent", hint: "Khóa, tên, nhiệm vụ", run: go("/agents") },
       { id: "machines", group: "Đi tới", label: "Máy", hint: "SSH và SFTP", run: go("/machines") },
       { id: "recipes", group: "Đi tới", label: "Công thức", hint: "Câu lệnh đã lưu", run: go("/recipes") },
       { id: "insights", group: "Đi tới", label: "Nhịp", hint: "Token và hoạt động", run: go("/insights") },
       { id: "gateway", group: "Đi tới", label: "Skill", hint: "Tìm trên GitHub, Claude, Codex, Gemini", run: go("/gateway") },
-      { id: "ket-noi", group: "Đi tới", label: "Kết nối", hint: "Khóa Grok và Gemini qua Google", run: go("/ket-noi") },
       { id: "lenh", group: "Đi tới", label: "File lệnh", hint: "Lập khung, khóa viết code, rà soát", run: go("/lenh") },
       ...repos.map((repo) => ({
         id: `repo-${repo.slug}`,

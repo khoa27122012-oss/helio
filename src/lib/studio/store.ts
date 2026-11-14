@@ -2,11 +2,11 @@ import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import { askHelio } from "@/lib/gateway/ask"
 import { INSTALLED, skillDigest } from "@/lib/gateway/catalog"
-import { cleanKey, readKeys, type KeyName } from "@/lib/gateway/key"
+import { cleanKey } from "@/lib/gateway/key"
 import { needsModel, planReply, type Reply } from "./reply"
 import { demoData } from "./seed"
 import { chatPane, ROSTER, roomAgent } from "./roster"
-import type { Agent, Pane, PaneStatus, StudioData, StrategyId } from "./types"
+import type { Agent, AgentProvider, Pane, PaneStatus, StudioData, StrategyId } from "./types"
 
 type Actions = {
   tick: () => void
@@ -28,7 +28,8 @@ type Actions = {
   setDirective: (text: string) => void
   addExtra: (skill: { name: string; source: string; text: string }) => void
   removeExtra: (id: string) => void
-  setKey: (which: KeyName, value: string) => void
+  addKeyed: (input: { name: string; apiKey: string; task: string; provider: "grok" | "gemini" }) => boolean
+  setTask: (id: string, task: string) => void
   begin: () => void
   addAgent: (name: string) => void
   reset: () => void
@@ -204,15 +205,13 @@ export const useStudio = create<Studio>()(
           return
         }
 
-        const keys = state.keys ?? { xai: "", gemini: "" }
-        const useGemini = agent?.model === "gemini" && Boolean(keys.gemini)
-        const via = useGemini
-          ? "Đang hỏi Gemini"
-          : state.strategy === "shield"
-            ? "Gọi ngắn · Grok"
-            : agent?.model === "gemini"
-              ? "Chưa có khóa Gemini · đang hỏi Grok"
-              : "Đang hỏi Grok"
+        const keyed = Boolean(agent?.apiKey)
+        const provider = agent?.provider === "gemini" ? "gemini" : "grok"
+        const via = keyed
+          ? provider === "gemini"
+            ? "Đang hỏi Gemini"
+            : "Đang hỏi Grok · khóa của agent"
+          : "Đang hỏi qua trình duyệt"
         const ticket = nid("ask")
         set({
           inflight: { ...state.inflight, [paneId]: ticket },
@@ -233,12 +232,12 @@ export const useStudio = create<Studio>()(
             prompt: input,
             skills: packSkills(state, input),
             context: roomContext(state, pane),
-            directive: state.directive,
+            directive: [state.directive, agent?.task].filter(Boolean).join("\n"),
             route: state.strategy === "shield" ? "shield" : "bridge",
             tight: state.enabled.some((id) => id === "token-shield" || id === "prefix-cache" || id === "on-demand"),
             plain: state.enabled.includes("plain"),
-            provider: useGemini ? "gemini" : "grok",
-            apiKey: useGemini ? keys.gemini : keys.xai,
+            provider: keyed ? provider : "grok",
+            apiKey: agent?.apiKey ?? "",
           },
         })
           .then((result) => {
@@ -295,12 +294,22 @@ export const useStudio = create<Studio>()(
               ),
             })
           })
-          .catch(() => {
+          .catch((error) => {
             if (get().inflight[paneId] !== ticket) return
-            apply(planReply(input, ctx), 0, [
-              { kind: "sys", text: "Không nối được Grok." },
-              { kind: "sys", text: "Phòng trả lời thay." },
-            ], false)
+            const denied = error instanceof Error && error.message === "Unauthorized"
+            apply(
+              denied
+                ? { status: "idle", plan: ["Cần đăng nhập Google."], lines: [] }
+                : planReply(input, ctx),
+              0,
+              denied
+                ? [{ kind: "sys", text: "Đăng nhập Google để dùng AI trên trình duyệt. Không cần khóa API." }]
+                : [
+                    { kind: "sys", text: "Không nối được model." },
+                    { kind: "sys", text: "Phòng trả lời thay." },
+                  ],
+              false,
+            )
           })
       },
       focus: (id) => set({ focusId: id }),
@@ -434,27 +443,48 @@ export const useStudio = create<Studio>()(
       },
       setStrategy: (strategy) => set({ strategy }),
       setDirective: (text) => set({ directive: text.slice(0, 4000) }),
-      setKey: (which, value) => {
-        const key = cleanKey(value)
-        if (key === null) return
-        const prev = get().keys ?? { xai: "", gemini: "" }
-        if (prev[which] === key) return
-        const keys = { ...prev, [which]: key }
-        const note =
-          which === "gemini"
-            ? key
-              ? "Gemini dùng khóa từ tài khoản Google của bạn."
-              : "Đã xóa khóa Gemini. Câu chữ đi qua Grok 4.5."
-            : key
-              ? "Grok dùng khóa xAI bạn dán."
-              : "Đã xóa khóa Grok. Dùng khóa của bản nếu có."
+      addKeyed: (input) => {
+        const key = cleanKey(input.apiKey)
+        const name = input.name.trim().slice(0, 40)
+        const task = input.task.trim().slice(0, 400)
+        if (key === null || !key || !name || task.length < 2) return false
+        const provider: AgentProvider = input.provider === "gemini" ? "gemini" : "grok"
+        const id = nid("agent")
+        const slug =
+          name
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^a-z0-9]+/g, "")
+            .slice(0, 16) || "agent"
+        const agent: Agent = {
+          id,
+          name,
+          cli: slug,
+          model: provider === "gemini" ? "gemini-3.8-flash" : "grok-4.5",
+          tokens: 0,
+          paused: false,
+          worktree: `wt/${slug}`,
+          note: task,
+          apiKey: key,
+          task,
+          provider,
+        }
+        const pane = chatPane(agent, nid("pane"))
+        const state = get()
         set({
-          keys,
-          panes: get().panes.map((pane) =>
-            (which === "gemini" && pane.agentId === "gemini") || (which === "xai" && pane.agentId === "grok")
-              ? { ...pane, lines: [...pane.lines, { id: nid("sys"), kind: "sys" as const, text: note }].slice(-80) }
-              : pane,
-          ),
+          started: true,
+          agents: [...state.agents, agent],
+          panes: [...state.panes, pane].slice(-12),
+          focusId: pane.id,
+        })
+        return true
+      },
+      setTask: (id, task) => {
+        const text = task.trim().slice(0, 400)
+        if (text.length < 2) return
+        set({
+          agents: get().agents.map((agent) => (agent.id === id ? { ...agent, task: text, note: text } : agent)),
         })
       },
       addExtra: (skill) => {
@@ -500,6 +530,9 @@ export const useStudio = create<Studio>()(
           paused: false,
           worktree: `wt/${slug}`,
           note: "",
+          apiKey: "",
+          task: "",
+          provider: "browser",
         }
         const pane = chatPane(agent, nid("pane"))
         const state = get()
@@ -510,7 +543,7 @@ export const useStudio = create<Studio>()(
           focusId: pane.id,
         })
       },
-      reset: () => set({ ...demoData(), keys: get().keys, inflight: {} }),
+      reset: () => set({ ...demoData(), inflight: {} }),
     }),
     {
       name: "holine-studio-v1",
@@ -535,7 +568,6 @@ export const useStudio = create<Studio>()(
         catalogRev: state.catalogRev,
         directive: state.directive,
         extraSkills: state.extraSkills,
-        keys: state.keys,
       }),
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<StudioData>
@@ -547,7 +579,14 @@ export const useStudio = create<Studio>()(
           started: Boolean(saved.started),
           directive: typeof saved.directive === "string" ? saved.directive : "",
           extraSkills: Array.isArray(saved.extraSkills) ? saved.extraSkills.slice(0, 12) : [],
-          keys: readKeys(saved.keys),
+          agents: Array.isArray(saved.agents)
+            ? saved.agents.map((agent) => ({
+                ...agent,
+                apiKey: cleanKey(agent.apiKey) || "",
+                task: typeof agent.task === "string" ? agent.task.slice(0, 400) : "",
+                provider: agent.provider === "gemini" || agent.provider === "grok" ? agent.provider : "browser",
+              }))
+            : current.agents,
           catalogRev: 2,
           inflight: {},
         }

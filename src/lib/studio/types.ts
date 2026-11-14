@@ -1,5 +1,3 @@
-import type { ApiKeys } from "@/lib/gateway/key"
-
 export type StrategyId = "bridge" | "shield" | "local"
 
 export type LineKind = "in" | "out" | "sys" | "ok" | "block"
@@ -26,6 +24,8 @@ export type Pane = {
   lines: Line[]
 }
 
+export type AgentProvider = "browser" | "grok" | "gemini"
+
 export type Agent = {
   id: string
   name: string
@@ -35,6 +35,9 @@ export type Agent = {
   paused: boolean
   worktree: string
   note: string
+  apiKey: string
+  task: string
+  provider: AgentProvider
 }
 
 export type RepoFile = { path: string; lang: string; code: string }
@@ -129,5 +132,4 @@ export type StudioData = {
   catalogRev: number
   directive: string
   extraSkills: ExtraSkill[]
-  keys: ApiKeys
 }

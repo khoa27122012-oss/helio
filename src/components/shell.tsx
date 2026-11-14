@@ -6,7 +6,6 @@ import {
   Blocks,
   FolderGit2,
   GitPullRequest,
-  KeyRound,
   LayoutGrid,
   Search,
   Server,
@@ -15,12 +14,12 @@ import {
 } from "lucide-react"
 import { Mark } from "@/components/mark"
 import { Palette } from "@/components/palette"
+import { UserButton } from "@/lib/auth/gates"
 import { cn } from "@/lib/cn"
 import { useStudio } from "@/lib/studio/store"
 
 const NAV = [
   { to: "/", label: "Phòng", icon: LayoutGrid },
-  { to: "/ket-noi", label: "Kết nối", icon: KeyRound },
   { to: "/gateway", label: "Skill", icon: Blocks },
   { to: "/repos", label: "Kho", icon: FolderGit2 },
   { to: "/flow", label: "Duyệt", icon: GitPullRequest },
@@ -122,6 +121,7 @@ export function Shell({ children }: { children: ReactNode }) {
               {blocked} đã chặn
             </span>
           ) : null}
+          <UserButton />
         </div>
       </header>
       <div className="flex min-h-0 flex-1">

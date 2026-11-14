@@ -1,6 +1,6 @@
 import type { Agent, Pane } from "./types"
 
-export const ROSTER: Omit<Agent, "tokens" | "paused" | "note">[] = [
+export const ROSTER: Omit<Agent, "tokens" | "paused" | "note" | "apiKey" | "task" | "provider">[] = [
   { id: "grok", name: "Grok", cli: "grok", model: "grok-4.5", worktree: "wt/grok" },
   { id: "claude", name: "Claude", cli: "claude", model: "opus", worktree: "wt/claude" },
   { id: "codex", name: "Codex", cli: "codex", model: "gpt", worktree: "wt/codex" },
@@ -9,7 +9,7 @@ export const ROSTER: Omit<Agent, "tokens" | "paused" | "note">[] = [
 ]
 
 export function roomAgent(row: (typeof ROSTER)[number]): Agent {
-  return { ...row, tokens: 0, paused: false, note: "" }
+  return { ...row, tokens: 0, paused: false, note: "", apiKey: "", task: "", provider: "browser" }
 }
 
 export function chatPane(agent: Agent, id = `p-${agent.id}`): Pane {
@@ -27,10 +27,11 @@ export function chatPane(agent: Agent, id = `p-${agent.id}`): Pane {
       {
         id: `hi-${agent.id}`,
         kind: "sys",
-        text:
-          agent.model === "grok-4.5"
-            ? `${agent.name} · ${agent.model}`
-            : `${agent.name} · ${agent.model}. Câu chữ đi qua Grok 4.5.`,
+        text: agent.apiKey
+          ? `${agent.name} · ${agent.provider === "gemini" ? "Gemini" : "Grok"}. Nhiệm vụ: ${agent.task}`
+          : agent.model === "grok-4.5"
+            ? `${agent.name} · ${agent.model}. Đăng nhập Google, không cần khóa.`
+            : `${agent.name} · ${agent.model}. Câu chữ đi qua Grok 4.5 sau khi đăng nhập Google.`,
       },
     ],
   }
