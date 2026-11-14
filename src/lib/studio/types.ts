@@ -1,3 +1,5 @@
+import type { ApiKeys } from "@/lib/gateway/key"
+
 export type StrategyId = "bridge" | "shield" | "local"
 
 export type LineKind = "in" | "out" | "sys" | "ok" | "block"
@@ -127,4 +129,5 @@ export type StudioData = {
   catalogRev: number
   directive: string
   extraSkills: ExtraSkill[]
+  keys: ApiKeys
 }

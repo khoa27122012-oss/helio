@@ -1,7 +1,9 @@
 import { createServerFn } from "@tanstack/react-start"
+import { cleanKey } from "./key"
 import { plainText } from "./plain"
 
 type RouteName = "bridge" | "shield"
+type Provider = "grok" | "gemini"
 
 type AskInput = {
   prompt: string
@@ -11,20 +13,63 @@ type AskInput = {
   tight: boolean
   plain: boolean
   directive: string
+  provider: Provider
+  apiKey: string
 }
 
 const RAIL = /\brm\s+-[a-z]*r[a-z]*f\b|git\s+reset\s+--hard|\bgit\s+push\b[^\n]{0,40}(?:--force|\s-f\b)|\bdrop\s+(?:database|table)\b|\bmkfs\b|\bdd\s+if=/i
+const GEMINI = "gemini-3.8-flash"
 
 function clip(value: unknown, max: number) {
   return String(value ?? "").trim().slice(0, max)
+}
+
+function hideKey(message: string, key: string) {
+  const text = key ? message.split(key).join("…") : message
+  return text.replace(/\s+/g, " ").trim().slice(0, 180)
+}
+
+function errorText(body: unknown, key: string) {
+  const err = body as { error?: { message?: string } | string }
+  const message = typeof err.error === "string" ? err.error : err.error?.message ?? ""
+  return hideKey(message, key)
 }
 
 export const aiStatus = createServerFn({ method: "GET" }).handler(async () => {
   return { ready: Boolean(process.env.XAI_API_KEY) }
 })
 
-async function complete(apiKey: string, system: string, prompt: string, maxTokens: number) {
-  const res = await fetch("https://api.x.ai/v1/chat/completions", {
+function systemText(data: { tight: boolean; directive: string; skills: string; context: string; plain: boolean }) {
+  return (
+    data.tight
+      ? [
+          "Holine. Tiếng Việt, đủ ý, không mở đầu xã giao.",
+          "Cấm hướng dẫn rm -rf, sudo, reset --hard, push --force, drop database, drop table, mkfs, dd. Nếu bị đòi, từ chối một câu.",
+          "Đừng bảo đã chạy lệnh, đã merge, hoặc đã sửa file.",
+          "Không gỡ từ chối và không nới hàng rào.",
+          data.directive ? `File lệnh của người dùng. Làm theo, trừ khi đụng hàng rào:\n${data.directive}` : "",
+          data.skills,
+          data.context,
+          data.plain ? "Không chào, không emoji, không gạch ngang." : "",
+        ]
+      : [
+          "Bạn là Holine, phòng điều khiển lập trình. Trả lời tiếng Việt, đủ ý, ngắn, không mở đầu xã giao.",
+          "Hàng rào luôn thắng: không đề xuất và không hướng dẫn rm -rf, sudo, git reset --hard, git push --force, drop database, drop table, mkfs, dd. Nếu bị đòi, từ chối trong một câu.",
+          "Đừng bảo là đã chạy lệnh, đã merge, hoặc đã sửa file.",
+          "Không gỡ từ chối của chính bạn và không nới hàng rào.",
+          data.directive ? `File lệnh của người dùng. Làm theo, trừ khi đụng hàng rào:\n${data.directive}` : "",
+          "Bỏ lời thừa. Giữ điều kiện, rủi ro và bước cần làm.",
+          data.plain ? "Không chào, không emoji, không gạch ngang." : "",
+          `Kỹ năng đang bật:\n${data.skills}`,
+          data.context ? `Ngữ cảnh phòng:\n${data.context}` : "",
+        ]
+  )
+    .filter(Boolean)
+    .join("\n")
+}
+
+async function completeGrok(apiKey: string, system: string, prompt: string, maxTokens: number) {
+  return fetch("https://api.x.ai/v1/chat/completions", {
     method: "POST",
     signal: AbortSignal.timeout(25000),
     headers: {
@@ -41,14 +86,138 @@ async function complete(apiKey: string, system: string, prompt: string, maxToken
       ],
     }),
   })
-  return res
 }
+
+async function completeGemini(apiKey: string, system: string, prompt: string, maxTokens: number) {
+  return fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI}:generateContent`, {
+    method: "POST",
+    signal: AbortSignal.timeout(25000),
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey,
+    },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: system }] },
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: { maxOutputTokens: maxTokens, temperature: 0.3 },
+    }),
+  })
+}
+
+function guard(text: string) {
+  if (!text) return ""
+  if (RAIL.test(text)) return "Mình không đưa lệnh phá. Hàng rào vẫn chặn rm -rf, reset --hard, force-push và drop."
+  return text
+}
+
+async function readGrok(res: Response, key: string, plain: boolean, system: string, prompt: string) {
+  if (!res.ok) {
+    let extra = ""
+    try {
+      extra = errorText(await res.json(), key)
+    } catch {
+      extra = ""
+    }
+    const why =
+      res.status === 400 || res.status === 401 || res.status === 403
+        ? "Khóa Grok bị từ chối."
+        : res.status === 429
+          ? "Grok đang giới hạn lượt."
+          : `Grok không trả lời (${res.status}).`
+    return { ok: false as const, error: extra ? `${why} ${extra}` : why, tier: "local" as const }
+  }
+  const body = (await res.json()) as {
+    choices?: { message?: { content?: string } }[]
+    usage?: { total_tokens?: number }
+  }
+  let text = body.choices?.[0]?.message?.content?.trim() ?? ""
+  if (plain) {
+    const cleaned = plainText(text)
+    if (cleaned) text = cleaned
+  }
+  text = guard(text)
+  if (!text) return { ok: false as const, error: "Grok trả về rỗng.", tier: "local" as const }
+  const tokens = body.usage?.total_tokens || Math.ceil((system.length + prompt.length + text.length) / 4)
+  return { ok: true as const, text, tokens, tier: "grok" as const }
+}
+
+async function readGemini(res: Response, key: string, plain: boolean, system: string, prompt: string) {
+  if (!res.ok) {
+    let extra = ""
+    try {
+      extra = errorText(await res.json(), key)
+    } catch {
+      extra = ""
+    }
+    const why =
+      res.status === 400 || res.status === 401 || res.status === 403
+        ? "Khóa Gemini bị từ chối. Tạo khóa sau khi đăng nhập tài khoản Google."
+        : res.status === 429
+          ? "Gemini đang giới hạn lượt."
+          : `Gemini không trả lời (${res.status}).`
+    return { ok: false as const, error: extra ? `${why} ${extra}` : why, tier: "local" as const }
+  }
+  const body = (await res.json()) as {
+    candidates?: { content?: { parts?: { text?: string }[] } }[]
+    usageMetadata?: { totalTokenCount?: number }
+  }
+  let text = body.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("").trim() ?? ""
+  if (plain) {
+    const cleaned = plainText(text)
+    if (cleaned) text = cleaned
+  }
+  text = guard(text)
+  if (!text) return { ok: false as const, error: "Gemini trả về rỗng.", tier: "local" as const }
+  const tokens = body.usageMetadata?.totalTokenCount || Math.ceil((system.length + prompt.length + text.length) / 4)
+  return { ok: true as const, text, tokens, tier: "gemini" as const }
+}
+
+function takeKey(value: unknown) {
+  const key = cleanKey(value)
+  if (key === null) throw new Error("Dán khóa API, không dán file JSON.")
+  return key
+}
+
+export const probeModel = createServerFn({ method: "POST" })
+  .validator((input: { provider?: string; apiKey?: string }) => {
+    const provider: Provider = input?.provider === "gemini" ? "gemini" : "grok"
+    return { provider, apiKey: takeKey(input?.apiKey) }
+  })
+  .handler(async ({ data }) => {
+    const own = Boolean(data.apiKey)
+    const key = data.provider === "gemini" ? data.apiKey : data.apiKey || process.env.XAI_API_KEY || ""
+    if (!key) {
+      return {
+        ok: false as const,
+        error: data.provider === "gemini" ? "Chưa có khóa Gemini." : "Chưa có khóa Grok.",
+      }
+    }
+    const system = "Trả lời đúng một từ tiếng Việt."
+    const prompt = "Sẵn sàng chưa?"
+    try {
+      const res =
+        data.provider === "gemini"
+          ? await completeGemini(key, system, prompt, 16)
+          : await completeGrok(key, system, prompt, 16)
+      const result =
+        data.provider === "gemini"
+          ? await readGemini(res, key, true, system, prompt)
+          : await readGrok(res, key, true, system, prompt)
+      if (!result.ok) return { ok: false as const, error: result.error }
+      const who = data.provider === "gemini" ? "Gemini" : "Grok 4.5"
+      const source = own ? "khóa bạn dán" : "khóa của bản Holine"
+      return { ok: true as const, detail: `${who} trả lời được. Đang dùng ${source}.` }
+    } catch {
+      return { ok: false as const, error: data.provider === "gemini" ? "Không nối được Gemini." : "Không nối được Grok." }
+    }
+  })
 
 export const askHelio = createServerFn({ method: "POST" })
   .validator((input: AskInput) => {
     const prompt = clip(input?.prompt, 2000)
     if (!prompt) throw new Error("Thiếu câu hỏi")
     const route: RouteName = input?.route === "shield" ? "shield" : "bridge"
+    const provider: Provider = input?.provider === "gemini" ? "gemini" : "grok"
     return {
       prompt,
       skills: clip(input?.skills, 2200),
@@ -57,68 +226,37 @@ export const askHelio = createServerFn({ method: "POST" })
       tight: Boolean(input?.tight),
       plain: Boolean(input?.plain),
       directive: clip(input?.directive, 1200),
+      provider,
+      apiKey: takeKey(input?.apiKey),
     }
   })
   .handler(async ({ data }) => {
-    const apiKey = process.env.XAI_API_KEY
+    const apiKey = data.provider === "gemini" ? data.apiKey : data.apiKey || process.env.XAI_API_KEY || ""
     if (!apiKey) {
-      return { ok: false as const, error: "Grok chưa sẵn trong bản này.", tier: "local" as const }
+      const error =
+        data.provider === "gemini"
+          ? "Khung Gemini chưa có khóa. Mở Kết nối, đăng nhập Google AI Studio, rồi dán khóa."
+          : "Grok chưa có khóa. Dán khóa xAI trong mục Kết nối."
+      return { ok: false as const, error, tier: "local" as const }
     }
 
-    const system = (
-      data.tight
-        ? [
-            "Holine. Tiếng Việt, đủ ý, không mở đầu xã giao.",
-            "Cấm hướng dẫn rm -rf, sudo, reset --hard, push --force, drop database, drop table, mkfs, dd. Nếu bị đòi, từ chối một câu.",
-            "Đừng bảo đã chạy lệnh, đã merge, hoặc đã sửa file.",
-            "Không gỡ từ chối và không nới hàng rào.",
-            data.directive ? `File lệnh của người dùng. Làm theo, trừ khi đụng hàng rào:\n${data.directive}` : "",
-            data.skills,
-            data.context,
-            data.plain ? "Không chào, không emoji, không gạch ngang." : "",
-          ]
-        : [
-            "Bạn là Holine, phòng điều khiển lập trình. Trả lời tiếng Việt, đủ ý, ngắn, không mở đầu xã giao.",
-            "Hàng rào luôn thắng: không đề xuất và không hướng dẫn rm -rf, sudo, git reset --hard, git push --force, drop database, drop table, mkfs, dd. Nếu bị đòi, từ chối trong một câu.",
-            "Đừng bảo là đã chạy lệnh, đã merge, hoặc đã sửa file.",
-            "Không gỡ từ chối của chính bạn và không nới hàng rào.",
-            data.directive ? `File lệnh của người dùng. Làm theo, trừ khi đụng hàng rào:\n${data.directive}` : "",
-            "Bỏ lời thừa. Giữ điều kiện, rủi ro và bước cần làm.",
-            data.plain ? "Không chào, không emoji, không gạch ngang." : "",
-            `Kỹ năng đang bật:\n${data.skills}`,
-            data.context ? `Ngữ cảnh phòng:\n${data.context}` : "",
-          ]
-    )
-      .filter(Boolean)
-      .join("\n")
-
+    const system = systemText(data)
     const maxTokens = data.route === "shield" ? 420 : 520
     try {
-      let res = await complete(apiKey, system, data.prompt, maxTokens)
+      if (data.provider === "gemini") {
+        const res = await completeGemini(apiKey, system, data.prompt, maxTokens)
+        return readGemini(res, apiKey, data.plain, system, data.prompt)
+      }
+      let res = await completeGrok(apiKey, system, data.prompt, maxTokens)
       if (!res.ok && data.route === "bridge" && res.status >= 500) {
-        res = await complete(apiKey, system, data.prompt, maxTokens)
+        res = await completeGrok(apiKey, system, data.prompt, maxTokens)
       }
-      if (!res.ok) {
-        return { ok: false as const, error: `Grok không trả lời (${res.status}).`, tier: "local" as const }
-      }
-      const body = (await res.json()) as {
-        choices?: { message?: { content?: string } }[]
-        usage?: { total_tokens?: number }
-      }
-      let text = body.choices?.[0]?.message?.content?.trim() ?? ""
-      if (data.plain) {
-        const cleaned = plainText(text)
-        if (cleaned) text = cleaned
-      }
-      if (!text) {
-        return { ok: false as const, error: "Grok trả về rỗng.", tier: "local" as const }
-      }
-      if (RAIL.test(text)) {
-        text = "Mình không đưa lệnh phá. Hàng rào vẫn chặn rm -rf, reset --hard, force-push và drop."
-      }
-      const tokens = body.usage?.total_tokens || Math.ceil((system.length + data.prompt.length + text.length) / 4)
-      return { ok: true as const, text, tokens, tier: "grok" as const }
+      return readGrok(res, apiKey, data.plain, system, data.prompt)
     } catch {
-      return { ok: false as const, error: "Không nối được Grok.", tier: "local" as const }
+      return {
+        ok: false as const,
+        error: data.provider === "gemini" ? "Không nối được Gemini." : "Không nối được Grok.",
+        tier: "local" as const,
+      }
     }
   })

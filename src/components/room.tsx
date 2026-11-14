@@ -130,6 +130,7 @@ export function Room() {
   const enabled = useStudio((s) => s.enabled)
   const extraSkills = useStudio((s) => s.extraSkills)
   const directive = useStudio((s) => s.directive)
+  const keys = useStudio((s) => s.keys) ?? { xai: "", gemini: "" }
   const focus = useStudio((s) => s.focus)
   const setLayout = useStudio((s) => s.setLayout)
   const addPane = useStudio((s) => s.addPane)
@@ -217,6 +218,9 @@ export function Room() {
         </Link>
         <Link to="/lenh" className="inline-flex h-11 items-center rounded-md border border-line px-3 text-sm text-paper hover:border-lamp">
           File lệnh
+        </Link>
+        <Link to="/ket-noi" className="inline-flex h-11 items-center rounded-md border border-line px-3 text-sm text-paper hover:border-lamp">
+          Kết nối
         </Link>
         <div className="relative">
           <Button variant="line" onClick={() => setAddOpen((value) => !value)} className="px-3">
@@ -346,6 +350,14 @@ export function Room() {
             </Link>
             <Link to="/lenh" className="inline-flex h-11 items-center text-sm text-lamp">
               File lệnh{directive.trim() ? " · đang có" : ""}
+            </Link>
+            <h3 className="mt-5 text-sm font-medium">Kết nối</h3>
+            <p className="mt-2 text-sm leading-6 text-paper">
+              {keys.xai ? "Grok dùng khóa bạn dán." : "Grok dùng khóa của bản, nếu có."}{" "}
+              {keys.gemini ? "Gemini đã có khóa Google." : "Gemini chưa có khóa Google."}
+            </p>
+            <Link to="/ket-noi" className="inline-flex h-11 items-center text-sm text-lamp">
+              Nhập API
             </Link>
             <h3 className="mt-5 text-sm font-medium">Hàng rào</h3>
             <ul className="mt-2 flex flex-col gap-2 text-sm leading-6 text-mist">

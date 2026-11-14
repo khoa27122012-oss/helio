@@ -397,5 +397,6 @@ export function demoData(): StudioData {
     catalogRev: 2,
     directive: "",
     extraSkills: [],
+    keys: { xai: "", gemini: "" },
   }
 }

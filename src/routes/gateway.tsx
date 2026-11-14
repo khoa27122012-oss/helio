@@ -151,7 +151,10 @@ function GatewayPage() {
         <p className="mt-1 max-w-xl text-sm leading-6 text-mist">
           Tìm kho trên GitHub. Claude, Codex, Gemini CLI và Cursor dùng cùng kiểu file SKILL.md. {voice} Holine không cài CLI của các bên đó.
         </p>
-        <Link to="/lenh" className="mt-3 inline-flex h-11 items-center text-sm text-lamp">
+        <Link to="/ket-noi" className="mt-3 inline-flex h-11 items-center text-sm text-lamp">
+          Kết nối API · Grok và Gemini qua Google
+        </Link>
+        <Link to="/lenh" className="inline-flex h-11 items-center text-sm text-lamp">
           File lệnh · khóa viết code, chỉ lập khung
         </Link>
         <form

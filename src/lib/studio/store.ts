@@ -2,6 +2,7 @@ import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import { askHelio } from "@/lib/gateway/ask"
 import { INSTALLED, skillDigest } from "@/lib/gateway/catalog"
+import { cleanKey, readKeys, type KeyName } from "@/lib/gateway/key"
 import { needsModel, planReply, type Reply } from "./reply"
 import { demoData } from "./seed"
 import { chatPane, ROSTER, roomAgent } from "./roster"
@@ -27,6 +28,7 @@ type Actions = {
   setDirective: (text: string) => void
   addExtra: (skill: { name: string; source: string; text: string }) => void
   removeExtra: (id: string) => void
+  setKey: (which: KeyName, value: string) => void
   begin: () => void
   addAgent: (name: string) => void
   reset: () => void
@@ -193,7 +195,7 @@ export const useStudio = create<Studio>()(
                     lines: [
                       ...item.lines,
                       echo,
-                      { id: nid("sys"), kind: "sys" as const, text: "Câu trước vẫn đang đi qua Grok. Đợi một nhịp." },
+                      { id: nid("sys"), kind: "sys" as const, text: "Câu trước chưa xong. Đợi một nhịp." },
                     ].slice(-80),
                   }
                 : item,
@@ -202,8 +204,16 @@ export const useStudio = create<Studio>()(
           return
         }
 
+        const keys = state.keys ?? { xai: "", gemini: "" }
+        const useGemini = agent?.model === "gemini" && Boolean(keys.gemini)
+        const via = useGemini
+          ? "Đang hỏi Gemini"
+          : state.strategy === "shield"
+            ? "Gọi ngắn · Grok"
+            : agent?.model === "gemini"
+              ? "Chưa có khóa Gemini · đang hỏi Grok"
+              : "Đang hỏi Grok"
         const ticket = nid("ask")
-        const via = state.strategy === "shield" ? "Gọi ngắn · Grok" : "Đang hỏi Grok"
         set({
           inflight: { ...state.inflight, [paneId]: ticket },
           panes: state.panes.map((item) =>
@@ -227,6 +237,8 @@ export const useStudio = create<Studio>()(
             route: state.strategy === "shield" ? "shield" : "bridge",
             tight: state.enabled.some((id) => id === "token-shield" || id === "prefix-cache" || id === "on-demand"),
             plain: state.enabled.includes("plain"),
+            provider: useGemini ? "gemini" : "grok",
+            apiKey: useGemini ? keys.gemini : keys.xai,
           },
         })
           .then((result) => {
@@ -250,7 +262,7 @@ export const useStudio = create<Studio>()(
               .slice(0, 14)
             const done: Reply = {
               status: "idle",
-              plan: [`${result.tokens} token · Grok 4.5`],
+              plan: [`${result.tokens} token · ${result.tier === "gemini" ? "Gemini" : "Grok 4.5"}`],
               lines: [
                 { kind: "ok", text: `${result.tokens} token` },
                 ...answer.map((line) => ({ kind: "out" as const, text: line })),
@@ -422,6 +434,29 @@ export const useStudio = create<Studio>()(
       },
       setStrategy: (strategy) => set({ strategy }),
       setDirective: (text) => set({ directive: text.slice(0, 4000) }),
+      setKey: (which, value) => {
+        const key = cleanKey(value)
+        if (key === null) return
+        const prev = get().keys ?? { xai: "", gemini: "" }
+        if (prev[which] === key) return
+        const keys = { ...prev, [which]: key }
+        const note =
+          which === "gemini"
+            ? key
+              ? "Gemini dùng khóa từ tài khoản Google của bạn."
+              : "Đã xóa khóa Gemini. Câu chữ đi qua Grok 4.5."
+            : key
+              ? "Grok dùng khóa xAI bạn dán."
+              : "Đã xóa khóa Grok. Dùng khóa của bản nếu có."
+        set({
+          keys,
+          panes: get().panes.map((pane) =>
+            (which === "gemini" && pane.agentId === "gemini") || (which === "xai" && pane.agentId === "grok")
+              ? { ...pane, lines: [...pane.lines, { id: nid("sys"), kind: "sys" as const, text: note }].slice(-80) }
+              : pane,
+          ),
+        })
+      },
       addExtra: (skill) => {
         const name = skill.name.trim().slice(0, 80)
         const text = skill.text.trim().slice(0, 4000)
@@ -475,7 +510,7 @@ export const useStudio = create<Studio>()(
           focusId: pane.id,
         })
       },
-      reset: () => set({ ...demoData(), inflight: {} }),
+      reset: () => set({ ...demoData(), keys: get().keys, inflight: {} }),
     }),
     {
       name: "holine-studio-v1",
@@ -500,6 +535,7 @@ export const useStudio = create<Studio>()(
         catalogRev: state.catalogRev,
         directive: state.directive,
         extraSkills: state.extraSkills,
+        keys: state.keys,
       }),
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<StudioData>
@@ -511,6 +547,7 @@ export const useStudio = create<Studio>()(
           started: Boolean(saved.started),
           directive: typeof saved.directive === "string" ? saved.directive : "",
           extraSkills: Array.isArray(saved.extraSkills) ? saved.extraSkills.slice(0, 12) : [],
+          keys: readKeys(saved.keys),
           catalogRev: 2,
           inflight: {},
         }

@@ -10,7 +10,8 @@ Phòng điều khiển cho agent và kho mã. Nhiều khung chat, mỗi agent m�
 - **Hàng rào** chặn `rm -rf`, `sudo`, `git reset --hard`, `git push --force`
 - Plugin luôn bật. Skill tìm trên GitHub, dán link, hoặc tải file .md
 - File lệnh `lenh.md` siết việc model được làm. Hàng rào vẫn thắng
-- Câu không phải lệnh gọi Grok 4.5. Lệnh shell không gọi model
+- Kết nối: dán khóa xAI, hoặc khóa Gemini sau khi đăng nhập Google AI Studio
+- Câu không phải lệnh gọi model. Khung Gemini dùng khóa Google nếu đã dán. Lệnh shell không gọi model
 
 ## Bảng lệnh
 

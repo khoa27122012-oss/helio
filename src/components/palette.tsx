@@ -30,6 +30,7 @@ export function Palette({ open, onClose }: { open: boolean; onClose: () => void 
       { id: "recipes", group: "Đi tới", label: "Công thức", hint: "Câu lệnh đã lưu", run: go("/recipes") },
       { id: "insights", group: "Đi tới", label: "Nhịp", hint: "Token và hoạt động", run: go("/insights") },
       { id: "gateway", group: "Đi tới", label: "Skill", hint: "Tìm trên GitHub, Claude, Codex, Gemini", run: go("/gateway") },
+      { id: "ket-noi", group: "Đi tới", label: "Kết nối", hint: "Khóa Grok và Gemini qua Google", run: go("/ket-noi") },
       { id: "lenh", group: "Đi tới", label: "File lệnh", hint: "Lập khung, khóa viết code, rà soát", run: go("/lenh") },
       ...repos.map((repo) => ({
         id: `repo-${repo.slug}`,

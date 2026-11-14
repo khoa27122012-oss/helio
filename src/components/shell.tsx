@@ -6,6 +6,7 @@ import {
   Blocks,
   FolderGit2,
   GitPullRequest,
+  KeyRound,
   LayoutGrid,
   Search,
   Server,
@@ -19,6 +20,7 @@ import { useStudio } from "@/lib/studio/store"
 
 const NAV = [
   { to: "/", label: "Phòng", icon: LayoutGrid },
+  { to: "/ket-noi", label: "Kết nối", icon: KeyRound },
   { to: "/gateway", label: "Skill", icon: Blocks },
   { to: "/repos", label: "Kho", icon: FolderGit2 },
   { to: "/flow", label: "Duyệt", icon: GitPullRequest },
