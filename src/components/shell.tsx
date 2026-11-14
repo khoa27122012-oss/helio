@@ -3,7 +3,7 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router"
 import {
   Activity,
   Bot,
-  Download,
+  Blocks,
   FolderGit2,
   GitPullRequest,
   LayoutGrid,
@@ -20,7 +20,7 @@ import { useStudio } from "@/lib/studio/store"
 
 const NAV = [
   { to: "/", label: "Phòng", icon: LayoutGrid },
-  { to: "/gateway", label: "Tải", icon: Download },
+  { to: "/gateway", label: "Plugin", icon: Blocks },
   { to: "/repos", label: "Kho", icon: FolderGit2 },
   { to: "/flow", label: "Duyệt", icon: GitPullRequest },
   { to: "/agents", label: "Agent", icon: Bot },

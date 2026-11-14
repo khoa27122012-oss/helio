@@ -1,13 +1,3 @@
-export type ToolStatus = "absent" | "installing" | "ready"
-
-export type ToolRow = { id: string; progress: number; state: ToolStatus }
-
-export type ConnectorRow = { id: string; on: boolean }
-
-export type Stitch = { id: string; title: string; ids: string[] }
-
-export type Preview = { apk: string; device: string } | null
-
 export type StrategyId = "bridge" | "shield" | "local"
 
 export type LineKind = "in" | "out" | "sys" | "ok" | "block"
@@ -131,8 +121,5 @@ export type StudioData = {
   blocked: number
   enabled: string[]
   strategy: StrategyId
-  tools: ToolRow[]
-  connectors: ConnectorRow[]
-  stitches: Stitch[]
-  preview: Preview
+  catalogRev: number
 }

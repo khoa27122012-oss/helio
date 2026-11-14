@@ -17,6 +17,26 @@ export type Installed = {
 /** One-line digests only. Full SKILL.md stays on disk and is never sent to the model. */
 export const INSTALLED: Installed[] = [
   {
+    id: "plain",
+    name: "Giọng thường",
+    kind: "plugin",
+    source: "Helio",
+    shield: false,
+    defaultOn: true,
+    blurb: "Cắt câu mở đầu, emoji và cụm sáo trước khi hiện chữ. Ý trả lời giữ nguyên.",
+    digest: "Giọng thường: không chào, không 'chắc chắn rồi', không emoji, không gạch ngang. Nói thẳng việc.",
+  },
+  {
+    id: "concrete",
+    name: "Nói đúng việc",
+    kind: "plugin",
+    source: "Helio",
+    shield: false,
+    defaultOn: true,
+    blurb: "Bắt model gọi tên nhánh, PR và file có trong phòng. Không bài luận chung.",
+    digest: "Nói đúng việc: nêu nhánh, PR, file có trong ngữ cảnh. Không bài luận chung. Không câu 'hy vọng điều này giúp'.",
+  },
+  {
     id: "ponytail",
     name: "Ponytail",
     kind: "plugin",
@@ -25,17 +45,6 @@ export const INSTALLED: Installed[] = [
     defaultOn: true,
     blurb: "Việc nhỏ nhất vẫn xong hết. Nêu phần bỏ qua và rủi ro. Không thêm tính năng không được hỏi.",
     digest: "Ponytail: giải quyết hết việc bằng thay đổi nhỏ nhất. Một dòng việc đã bỏ và rủi ro. Không thêm lựa chọn thừa.",
-  },
-  {
-    id: "playwright-cli",
-    name: "Playwright CLI",
-    kind: "plugin",
-    source: "openai/skills · playwright",
-    shield: true,
-    defaultOn: true,
-    blurb: "Duyệt web bằng lệnh: mở, snapshot, bấm theo ref, chụp. Không nhồi một danh sách tool dài.",
-    digest: "Playwright CLI: tự động hóa trình duyệt bằng lệnh ngắn. Snapshot lấy ref rồi mới bấm. Không liệt kê tool thừa.",
-    match: /trình duyệt|browser|snapshot|e2e|playwright|bấm/i,
   },
   {
     id: "token-shield",
@@ -78,17 +87,6 @@ export const INSTALLED: Installed[] = [
     digest: "Nhớ phần mở: giữ luật, không nhắc lại ví dụ đã biết.",
   },
   {
-    id: "graphify",
-    name: "Graphify",
-    kind: "plugin",
-    source: "Graphify-Labs/graphify",
-    shield: false,
-    defaultOn: true,
-    blurb: "Đồ thị tri thức từ mã và tài liệu. Mỗi cạnh có lý do. Không bịa file không có trong ngữ cảnh.",
-    digest: "Graphify: khi cần cấu trúc repo, nói quan hệ và lý do. Không bịa đường dẫn ngoài ngữ cảnh.",
-    match: /đồ thị|cấu trúc|graph|phụ thuộc|repo/i,
-  },
-  {
     id: "agent-skills",
     name: "Agent Skills",
     kind: "plugin",
@@ -120,34 +118,23 @@ export const INSTALLED: Installed[] = [
     digest: "Web guidelines: nhãn, focus thấy được, form, reduced-motion, alt, không tràn ngang, đích chạm đủ lớn.",
     match: /a11y|truy cập|focus|form|guideline|rà soát giao diện/i,
   },
-  {
-    id: "heretic",
-    name: "Heretic",
-    kind: "skill",
-    source: "akillness/jeo-skills",
-    shield: false,
-    defaultOn: false,
-    blurb: "Ghi chú nghiên cứu trên model bạn có quyền sửa. Không chạy trong phòng, không đụng Grok.",
-    digest: "Heretic chỉ là ghi chú nghiên cứu. Không gỡ từ chối, không jailbreak, không nới hàng rào của phòng.",
-    match: /heretic|abliteration|refusal/i,
-  },
 ]
 
 export const STRATEGIES: { id: StrategyId; name: string; detail: string }[] = [
   {
     id: "bridge",
-    name: "OmniRoute + 9Router",
-    detail: "Grok 4.5 đứng đầu combo. Lỗi máy chủ thì thử lại một lần, cùng model. Hết thì kế hoạch trong phòng.",
+    name: "Grok",
+    detail: "Grok 4.5. Máy chủ lỗi thì gọi lại một lần, cùng model. Không được thì phòng trả lời.",
   },
   {
     id: "shield",
-    name: "Token shield",
-    detail: "Một lần gọi, prompt đã nén, trần chữ thấp hơn. Vẫn Grok 4.5. Không đổi sang model kém hơn.",
+    name: "Gọi ngắn",
+    detail: "Một lần gọi, prompt đã nén. Vẫn Grok 4.5.",
   },
   {
     id: "local",
-    name: "Chỉ trong phòng",
-    detail: "Không gọi model. Lệnh và câu tiếng Việt do kế hoạch cục bộ trả lời.",
+    name: "Không gọi",
+    detail: "Không gọi model. Lệnh và câu tiếng Việt do phòng trả lời.",
   },
 ]
 

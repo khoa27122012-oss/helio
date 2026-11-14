@@ -2,14 +2,11 @@ import { useEffect, useState } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 import { compact } from "@/lib/studio/format"
 import { useStudio } from "@/lib/studio/store"
-import { cn } from "@/lib/cn"
 
 export const Route = createFileRoute("/insights")({
   component: InsightsPage,
   head: () => ({ meta: [{ title: "Nhịp · Helio" }] }),
 })
-
-const HEAT = ["bg-panel", "bg-lamp-soft", "bg-lamp-dim", "bg-lamp-deep", "bg-lamp"]
 
 function Chart({ data }: { data: { day: string; tokens: number }[] }) {
   const [charts, setCharts] = useState<typeof import("recharts") | null>(null)
@@ -47,12 +44,12 @@ function Chart({ data }: { data: { day: string; tokens: number }[] }) {
 
 function InsightsPage() {
   const series = useStudio((s) => s.series)
-  const heatmap = useStudio((s) => s.heatmap)
   const activity = useStudio((s) => s.activity)
   const blocked = useStudio((s) => s.blocked)
   const pulls = useStudio((s) => s.pulls)
   const agents = useStudio((s) => s.agents)
   const merged = pulls.filter((pull) => pull.state === "merged").length
+  const open = pulls.filter((pull) => pull.state !== "merged")
   const tokens = agents.reduce((sum, agent) => sum + agent.tokens, 0)
 
   const stats = [
@@ -67,7 +64,7 @@ function InsightsPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Nhịp</h1>
         <p className="mt-1 max-w-xl text-sm leading-6 text-mist">
-          Token, việc đã chặn, và 16 tuần có mặt. Gõ trong phòng rồi quay lại, cột cuối sẽ nhích.
+          Token và việc vừa xảy ra. Cột cuối nhích khi pane gọi Grok.
         </p>
       </div>
       <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -84,17 +81,6 @@ function InsightsPage() {
           <Chart data={series} />
         </div>
       </section>
-      <section className="rounded-lg border border-line bg-ink-2 p-4">
-        <h2 className="text-sm font-medium">16 tuần</h2>
-        <p className="mt-1 text-sm text-mist">Mỗi cột là một tuần. Đèn đậm là ngày có nhiều việc.</p>
-        <div className="mt-4 overflow-x-auto">
-          <div className="grid w-max grid-flow-col grid-rows-7 gap-1" role="img" aria-label="Hoạt động 16 tuần">
-            {heatmap.map((value, index) => (
-              <div key={index} className={cn("size-3 rounded-sm", HEAT[Math.min(value, 4)])} />
-            ))}
-          </div>
-        </div>
-      </section>
       <section className="grid gap-3 lg:grid-cols-2">
         <div className="rounded-lg border border-line bg-ink-2 p-4">
           <h2 className="text-sm font-medium">Vừa xảy ra</h2>
@@ -108,33 +94,21 @@ function InsightsPage() {
           </ul>
         </div>
         <div className="rounded-lg border border-line bg-ink-2 p-4">
-          <h2 className="text-sm font-medium">Cùng một mặt bàn</h2>
-          <table className="mt-3 w-full text-left text-sm">
-            <thead>
-              <tr className="text-mist">
-                <th className="py-2 font-medium">Việc</th>
-                <th className="py-2 font-medium">GitHub</th>
-                <th className="py-2 font-medium">Helio</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                ["Kho, file, sao", "Có", "Có, cạnh terminal"],
-                ["Nhiều agent một lúc", "Không", "Pane và worktree riêng"],
-                ["Hàng rào lệnh", "Không", "Chặn trước khi chạy"],
-                ["SSH và SFTP", "Không", "Trong mục Máy"],
-                ["Duyệt diff", "Trang riêng", "Ngay trong Duyệt"],
-              ].map((row) => (
-                <tr key={row[0]} className="border-t border-line">
-                  {row.map((cell) => (
-                    <td key={cell} className="py-2 pr-3 text-paper">
-                      {cell}
-                    </td>
-                  ))}
-                </tr>
+          <h2 className="text-sm font-medium">PR còn mở</h2>
+          {open.length ? (
+            <ul className="mt-3 flex flex-col gap-3">
+              {open.map((pull) => (
+                <li key={pull.id} className="text-sm leading-6">
+                  <span className="text-paper">{pull.title}</span>
+                  <span className="mt-1 block font-mono text-xs text-mist">
+                    {pull.repo} · {pull.state === "draft" ? "nháp" : "mở"}
+                  </span>
+                </li>
               ))}
-            </tbody>
-          </table>
+            </ul>
+          ) : (
+            <p className="mt-3 text-sm text-mist">Không còn PR mở.</p>
+          )}
         </div>
       </section>
     </div>

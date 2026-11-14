@@ -1,8 +1,7 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import { askHelio } from "@/lib/gateway/ask"
-import { skillDigest, strategyName } from "@/lib/gateway/catalog"
-import { ANDROID_BUILD, androidLog, connectorName, toolName } from "@/lib/gateway/market"
+import { INSTALLED, skillDigest } from "@/lib/gateway/catalog"
 import { needsModel, planReply, type Reply } from "./reply"
 import { demoData } from "./seed"
 import type { Pane, PaneStatus, StudioData, StrategyId } from "./types"
@@ -24,12 +23,6 @@ type Actions = {
   toggleMachine: (id: string) => void
   toggleSkill: (id: string) => void
   setStrategy: (strategy: StrategyId) => void
-  installTools: (ids: string[]) => void
-  removeTool: (id: string) => void
-  setConnector: (id: string, on: boolean) => void
-  addStitch: (ids: string[]) => void
-  removeStitch: (id: string) => void
-  buildTry: () => void
   reset: () => void
 }
 
@@ -63,11 +56,20 @@ function roomContext(state: StudioData, pane: Pane) {
   if (!short) {
     const off = state.machines.filter((machine) => !machine.online).map((machine) => machine.name)
     lines.push(off.length ? `Máy tắt: ${off.join(", ")}` : "Mọi máy đang mở.")
-    const linked = state.connectors.filter((item) => item.on).map((item) => connectorName(item.id))
-    if (linked.length) lines.push(`Đã nối: ${linked.slice(0, 8).join(", ")}`)
-    if (state.stitches[0]) lines.push(`Ghép: ${state.stitches[0].title}`)
   }
   return lines.join("\n")
+}
+
+const KNOWN = new Set(INSTALLED.map((item) => item.id))
+
+function reconcileEnabled(saved: string[] | undefined, fresh: string[], rev: number | undefined) {
+  const base = (saved?.length ? saved : fresh).filter((id) => KNOWN.has(id))
+  if ((rev ?? 1) >= 2) return base
+  const next = [...base]
+  for (const id of ["plain", "concrete"]) {
+    if (!next.includes(id)) next.push(id)
+  }
+  return next
 }
 
 export const useStudio = create<Studio>()(
@@ -91,28 +93,8 @@ export const useStudio = create<Studio>()(
           const lines = pane.lines.map((line, i) => (i === idx ? { ...line, hidden: false } : line))
           return { ...pane, lines, status: finish(lines, pane.hold) }
         })
-        const tools = state.tools.map((tool) => {
-          if (tool.state !== "installing") return tool
-          changed = true
-          const progress = Math.min(100, tool.progress + 8)
-          return progress >= 100 ? { ...tool, progress: 100, state: "ready" as const } : { ...tool, progress }
-        })
         if (!changed) return
-        const finished = tools.filter((tool, index) => tool.state === "ready" && state.tools[index]?.state === "installing")
-        set({
-          panes,
-          tools,
-          activity: finished.length
-            ? [
-                {
-                  id: nid("act"),
-                  text: `Đã cài ${finished.map((tool) => toolName(tool.id)).join(", ")}`,
-                  time: "vừa xong",
-                },
-                ...state.activity,
-              ].slice(0, 8)
-            : state.activity,
-        })
+        set({ panes })
       },
       submit: (paneId, text) => {
         const input = text.trim()
@@ -215,10 +197,7 @@ export const useStudio = create<Studio>()(
         }
 
         const ticket = nid("ask")
-        const via =
-          state.strategy === "shield"
-            ? "Token shield · Grok 4.5 · một lần gọi"
-            : "OmniRoute · 9Router tầng 1 · Grok 4.5"
+        const via = state.strategy === "shield" ? "Gọi ngắn · Grok" : "Đang hỏi Grok"
         set({
           inflight: { ...state.inflight, [paneId]: ticket },
           panes: state.panes.map((item) =>
@@ -226,7 +205,7 @@ export const useStudio = create<Studio>()(
               ? {
                   ...item,
                   status: "waiting" as const,
-                  plan: [via, "Hàng rào đã cho qua. Model không được chạy lệnh.", strategyName(state.strategy)],
+                  plan: ["Hàng rào đã cho qua.", via],
                   lines: [...item.lines, echo, { id: nid("sys"), kind: "sys" as const, text: via }].slice(-80),
                 }
               : item,
@@ -240,6 +219,7 @@ export const useStudio = create<Studio>()(
             context: roomContext(state, pane),
             route: state.strategy === "shield" ? "shield" : "bridge",
             tight: state.enabled.some((id) => id === "token-shield" || id === "prefix-cache" || id === "on-demand"),
+            plain: state.enabled.includes("plain"),
           },
         })
           .then((result) => {
@@ -252,7 +232,7 @@ export const useStudio = create<Studio>()(
               const local = planReply(input, ctx)
               apply(local, 0, [
                 { kind: "sys", text: result.error },
-                { kind: "sys", text: "9Router tầng 3 · kế hoạch trong phòng, không gọi thêm." },
+                { kind: "sys", text: "Phòng trả lời thay." },
               ], false)
               return
             }
@@ -263,17 +243,10 @@ export const useStudio = create<Studio>()(
               .slice(0, 14)
             const done: Reply = {
               status: "idle",
-              plan: [via, `${result.tokens} token · Grok 4.5`, "Không có lệnh nào được thực thi."],
+              plan: [`${result.tokens} token · Grok 4.5`],
               lines: [
-                { kind: "ok", text: `Grok 4.5 · ${result.tokens} token` },
+                { kind: "ok", text: `${result.tokens} token` },
                 ...answer.map((line) => ({ kind: "out" as const, text: line })),
-                {
-                  kind: "sys",
-                  text:
-                    state.strategy === "shield"
-                      ? "Token shield giữ nguyên model. Prompt chỉ mang digest một dòng."
-                      : "9Router dừng ở tầng thuê bao.",
-                },
               ],
             }
             const now = get()
@@ -307,7 +280,7 @@ export const useStudio = create<Studio>()(
             if (get().inflight[paneId] !== ticket) return
             apply(planReply(input, ctx), 0, [
               { kind: "sys", text: "Không nối được Grok." },
-              { kind: "sys", text: "9Router tầng 3 · kế hoạch trong phòng." },
+              { kind: "sys", text: "Phòng trả lời thay." },
             ], false)
           })
       },
@@ -442,92 +415,10 @@ export const useStudio = create<Studio>()(
         set({ enabled: enabled.includes(id) ? enabled.filter((item) => item !== id) : [...enabled, id] })
       },
       setStrategy: (strategy) => set({ strategy }),
-      installTools: (ids) => {
-        const want = new Set(ids)
-        set({
-          tools: get().tools.map((tool) =>
-            want.has(tool.id) && tool.state === "absent" ? { ...tool, state: "installing", progress: 4 } : tool,
-          ),
-        })
-      },
-      removeTool: (id) =>
-        set({
-          tools: get().tools.map((tool) => (tool.id === id ? { ...tool, state: "absent", progress: 0 } : tool)),
-        }),
-      setConnector: (id, on) => {
-        if (id === "grok" && !on) return
-        set({
-          connectors: get().connectors.map((item) => (item.id === id ? { ...item, on } : item)),
-        })
-      },
-      addStitch: (ids) => {
-        const linked = new Set(get().connectors.filter((item) => item.on).map((item) => item.id))
-        const picked = [...new Set(ids)].filter((id) => linked.has(id))
-        if (picked.length < 2) return
-        const title = picked.map((id) => connectorName(id)).join(" + ")
-        set({
-          stitches: [{ id: nid("stitch"), title, ids: picked }, ...get().stitches].slice(0, 8),
-        })
-      },
-      removeStitch: (id) => set({ stitches: get().stitches.filter((item) => item.id !== id) }),
-      buildTry: () => {
-        const state = get()
-        const pane = state.panes.find((item) => item.id === state.focusId)
-        if (!pane) return
-        const ready = new Set(state.tools.filter((tool) => tool.state === "ready").map((tool) => tool.id))
-        const missing = ANDROID_BUILD.filter((id) => !ready.has(id))
-        const echo = { id: nid("in"), kind: "in" as const, text: "./gradlew :app:assembleDebug" }
-        if (missing.length) {
-          const names = missing.map((id) => toolName(id)).join(", ")
-          set({
-            panes: state.panes.map((item) =>
-              item.id === pane.id
-                ? {
-                    ...item,
-                    status: "waiting" as const,
-                    hold: "waiting" as const,
-                    plan: ["Thiếu gói để build.", "Cài ở mục Tải, rồi build lại."],
-                    lines: [
-                      ...item.lines,
-                      echo,
-                      { id: nid("sys"), kind: "sys" as const, text: `Chưa build. Còn thiếu: ${names}` },
-                    ].slice(-80),
-                  }
-                : item,
-            ),
-          })
-          return
-        }
-        const device = ready.has("emulator") ? "emulator-5554" : "khung-xem-thu"
-        const rest = androidLog(device).map((text) => ({
-          id: nid("out"),
-          kind: "out" as const,
-          text,
-          hidden: true,
-        }))
-        set({
-          preview: { apk: "app-debug.apk", device },
-          activity: [
-            { id: nid("act"), text: `Build thử · ${device}`, time: "vừa xong" },
-            ...state.activity,
-          ].slice(0, 8),
-          panes: state.panes.map((item) =>
-            item.id === pane.id
-              ? {
-                  ...item,
-                  status: "running" as const,
-                  hold: "idle" as const,
-                  plan: ["assembleDebug trong phòng.", "Không cài SDK lên máy của bạn.", `Thiết bị: ${device}`],
-                  lines: [...item.lines, echo, ...rest].slice(-80),
-                }
-              : item,
-          ),
-        })
-      },
       reset: () => set({ ...demoData(), inflight: {} }),
     }),
     {
-      name: "helio-studio-v1",
+      name: "helio-studio-v2",
       skipHydration: true,
       partialize: (state) => ({
         panes: state.panes,
@@ -545,22 +436,16 @@ export const useStudio = create<Studio>()(
         blocked: state.blocked,
         enabled: state.enabled,
         strategy: state.strategy,
-        tools: state.tools,
-        connectors: state.connectors,
-        stitches: state.stitches,
-        preview: state.preview,
+        catalogRev: state.catalogRev,
       }),
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<StudioData>
         return {
           ...current,
           ...saved,
-          enabled: saved.enabled?.length ? saved.enabled : current.enabled,
+          enabled: reconcileEnabled(saved.enabled, current.enabled, saved.catalogRev),
           strategy: saved.strategy ?? current.strategy,
-          tools: saved.tools?.length ? saved.tools : current.tools,
-          connectors: saved.connectors?.length ? saved.connectors : current.connectors,
-          stitches: saved.stitches ?? current.stitches,
-          preview: saved.preview ?? null,
+          catalogRev: 2,
           inflight: {},
         }
       },

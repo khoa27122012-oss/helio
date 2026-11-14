@@ -127,8 +127,6 @@ export function Room() {
   const setLayout = useStudio((s) => s.setLayout)
   const addPane = useStudio((s) => s.addPane)
   const submit = useStudio((s) => s.submit)
-  const buildTry = useStudio((s) => s.buildTry)
-  const preview = useStudio((s) => s.preview)
   const [addOpen, setAddOpen] = useState(false)
   const shown = visiblePanes(panes, focusId, layout)
   const current = panes.find((pane) => pane.id === focusId) ?? panes[0]
@@ -136,7 +134,7 @@ export function Room() {
   return (
     <div className="flex flex-col md:h-full md:overflow-hidden">
       <div className="flex flex-wrap items-center gap-2 px-3 pt-3">
-        <p className="mr-auto text-sm text-mist">Tách pane, mỗi agent một worktree. Câu tiếng Việt đi qua Grok.</p>
+        <p className="mr-auto text-sm text-mist">Mỗi agent một worktree.</p>
         <div className="flex gap-1" role="group" aria-label="Tách pane">
           {([1, 2, 3] as const).map((count) => (
             <button
@@ -155,7 +153,7 @@ export function Room() {
           ))}
         </div>
         <Link to="/gateway" className="inline-flex h-11 items-center rounded-md bg-lamp px-4 text-sm font-medium text-ink">
-          Tải
+          Plugin
         </Link>
         <div className="relative">
           <Button variant="line" onClick={() => setAddOpen((value) => !value)} className="px-3">
@@ -219,13 +217,6 @@ export function Room() {
             {chip.label}
           </button>
         ))}
-        <button
-          type="button"
-          onClick={() => buildTry()}
-          className="h-11 shrink-0 rounded-md border border-line px-3 text-sm text-mist hover:border-lamp hover:text-paper"
-        >
-          Build thử
-        </button>
       </div>
       <div className={cn("flex min-h-0 flex-1 flex-col", layout !== 3 && "xl:flex-row")}>
         <div
@@ -254,28 +245,17 @@ export function Room() {
                 </li>
               ))}
             </ol>
-            <h3 className="mt-5 text-sm font-medium">Tải</h3>
+            <h3 className="mt-5 text-sm font-medium">Plugin</h3>
             <p className="mt-2 text-sm leading-6 text-paper">
               {strategyName(strategy)} · {enabled.length} mục đang bật
             </p>
             <Link to="/gateway" className="mt-2 inline-flex h-11 items-center text-sm text-lamp">
-              Plugin, connector, SDK
+              Bật hoặc tắt
             </Link>
-            {preview ? (
-              <div className="mx-auto mt-4 w-44 rounded-lg border border-line bg-ink p-2">
-                <div className="rounded-md border border-line bg-panel p-3">
-                  <p className="text-sm font-semibold">Helio</p>
-                  <p className="mt-2 text-xs leading-5 text-mist">Bản debug đã đóng gói trong phòng.</p>
-                  <p className="mt-4 font-mono text-xs text-lamp">{preview.apk}</p>
-                </div>
-                <p className="mt-2 text-center font-mono text-xs text-mist">{preview.device}</p>
-              </div>
-            ) : null}
             <h3 className="mt-5 text-sm font-medium">Hàng rào</h3>
             <ul className="mt-2 flex flex-col gap-2 text-sm leading-6 text-mist">
               <li>Không đụng nhánh main của pane khác.</li>
               <li>{blocked} lệnh nguy hiểm đã bị chặn trong phòng này.</li>
-              <li>Đây là mô phỏng. Không có lệnh nào chạy trên máy của bạn.</li>
             </ul>
           </aside>
         ) : null}

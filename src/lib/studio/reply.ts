@@ -44,9 +44,9 @@ function command(input: string, ctx: ReplyCtx): Reply | null {
   if (/^help$/i.test(input)) {
     return {
       status: "idle",
-      plan: ["Cho xem lệnh mô phỏng và cách nói tiếng Việt."],
+      plan: ["Liệt kê lệnh phòng nhận."],
       lines: [
-        { kind: "sys", text: "Lệnh có sẵn trong bản xem trước" },
+        { kind: "sys", text: "Lệnh phòng nhận" },
         { kind: "out", text: "git status · git log · git push · git worktree · ls · pwd · npm test · ssh · help" },
         { kind: "out", text: "Hoặc một câu: rà soát pull request đang mở" },
         { kind: "sys", text: "rm -rf, sudo, reset --hard và push --force sẽ bị chặn." },
@@ -117,7 +117,7 @@ function command(input: string, ctx: ReplyCtx): Reply | null {
   if (/^git push\b/i.test(input)) {
     return {
       status: "waiting",
-      plan: ["Push thường cần bạn xác nhận.", "Bản xem trước không đẩy remote."],
+      plan: ["Push thường cần bạn xác nhận.", "Phòng không đẩy remote."],
       lines: [
         { kind: "sys", text: "Chưa đẩy lên remote." },
         { kind: "out", text: `Nhánh sẽ đẩy: ${ctx.branch}` },
@@ -128,7 +128,7 @@ function command(input: string, ctx: ReplyCtx): Reply | null {
   if (/^npm (test|run test)\b/i.test(input)) {
     return {
       status: "idle",
-      plan: ["Chạy bộ test mô phỏng của Tide và Helio."],
+      plan: ["Báo kết quả test Tide và Helio."],
       lines: [
         { kind: "out", text: "rail.test.ts      đạt" },
         { kind: "out", text: "worktree.test.ts  đạt" },
@@ -152,9 +152,9 @@ function command(input: string, ctx: ReplyCtx): Reply | null {
   if (/^(cd|cat|ps|echo|pnpm|git)\b/i.test(input)) {
     return {
       status: "idle",
-      plan: ["Lệnh này chưa có bộ mô phỏng."],
+      plan: ["Phòng chưa có lệnh này."],
       lines: [
-        { kind: "sys", text: "Bản xem trước chưa chạy lệnh này trên máy thật." },
+        { kind: "sys", text: "Phòng chưa chạy lệnh này." },
         { kind: "out", text: "Thử git status, git log, ls, npm test, ssh, help." },
         { kind: "out", text: "Hoặc nói tiếng Việt, ví dụ: rà soát pull request đang mở." },
       ],
@@ -204,7 +204,6 @@ function natural(input: string, ctx: ReplyCtx): Reply {
     lines.push({ kind: "out", text: "Bảo mình chạy bước nào, hoặc gõ một lệnh trực tiếp." })
   }
 
-  lines.push({ kind: "sys", text: "Chưa có lệnh nào được thực thi trên máy của bạn." })
   return { status: "idle", plan, lines }
 }
 

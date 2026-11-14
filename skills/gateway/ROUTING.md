@@ -1,11 +1,10 @@
-# Cổng OmniRoute + 9Router
+# Cách gọi
 
-Helio không chạy server OmniRoute hay 9Router. Hai thứ đó là gateway riêng, và cổng xem trước chỉ có một.
+Helio gọi Grok 4.5 trực tiếp. Không có router trung gian.
 
-Trong phòng, cổng được mô phỏng đủ để dùng:
+1. **Grok** — một lần gọi. Máy chủ lỗi thì gọi lại một lần, cùng model. Không được thì phòng trả lời.
+2. **Gọi ngắn** — một lần gọi, prompt đã nén, cùng model.
+3. **Không gọi** — không có request.
 
-1. **OmniRoute combo** — Grok 4.5 là model chính. Không có model thứ hai kém hơn để không làm câu trả lời ngu đi.
-2. **9Router, ba tầng** — thuê bao (Grok 4.5) → thử lại một lần nếu máy chủ lỗi, cùng model → kế hoạch cục bộ, không tốn token.
-3. **Token shield** — một lần gọi, prompt đã nén, cùng model.
-
-Lệnh nguy hiểm không bao giờ vào tầng nào. Chúng dừng ở hàng rào của pane.
+Lệnh nguy hiểm dừng ở hàng rào, trước khi có request.
+Giọng thường cắt câu mở đầu và cụm sáo trên chữ trả về. Nói đúng việc bắt model gọi tên nhánh, PR và file có trong phòng.

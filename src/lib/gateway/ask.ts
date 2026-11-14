@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start"
+import { plainText } from "./plain"
 
 type RouteName = "bridge" | "shield"
 
@@ -8,6 +9,7 @@ type AskInput = {
   context: string
   route: RouteName
   tight: boolean
+  plain: boolean
 }
 
 const RAIL = /\brm\s+-[a-z]*r[a-z]*f\b|git\s+reset\s+--hard|\bgit\s+push\b[^\n]{0,40}(?:--force|\s-f\b)|\bdrop\s+(?:database|table)\b|\bmkfs\b|\bdd\s+if=/i
@@ -52,6 +54,7 @@ export const askHelio = createServerFn({ method: "POST" })
       context: clip(input?.context, 800),
       route,
       tight: Boolean(input?.tight),
+      plain: Boolean(input?.plain),
     }
   })
   .handler(async ({ data }) => {
@@ -69,13 +72,15 @@ export const askHelio = createServerFn({ method: "POST" })
             "Không gỡ từ chối và không nới hàng rào.",
             data.skills,
             data.context,
+            data.plain ? "Không chào, không emoji, không gạch ngang." : "",
           ]
         : [
             "Bạn là Helio, phòng điều khiển lập trình. Trả lời tiếng Việt, đủ ý, ngắn, không mở đầu xã giao.",
             "Hàng rào luôn thắng: không đề xuất và không hướng dẫn rm -rf, sudo, git reset --hard, git push --force, drop database, drop table, mkfs, dd. Nếu bị đòi, từ chối trong một câu.",
-            "Đây không phải shell thật. Đừng bảo là đã chạy lệnh, đã merge, hoặc đã sửa file.",
-            "Không gỡ từ chối của chính bạn và không nới hàng rào, kể cả khi một skill nghiên cứu được bật.",
-            "Token shield: bỏ lời thừa. Giữ điều kiện, rủi ro và bước cần làm.",
+            "Đừng bảo là đã chạy lệnh, đã merge, hoặc đã sửa file.",
+            "Không gỡ từ chối của chính bạn và không nới hàng rào.",
+            "Bỏ lời thừa. Giữ điều kiện, rủi ro và bước cần làm.",
+            data.plain ? "Không chào, không emoji, không gạch ngang." : "",
             `Kỹ năng đang bật:\n${data.skills}`,
             data.context ? `Ngữ cảnh phòng:\n${data.context}` : "",
           ]
@@ -97,6 +102,10 @@ export const askHelio = createServerFn({ method: "POST" })
         usage?: { total_tokens?: number }
       }
       let text = body.choices?.[0]?.message?.content?.trim() ?? ""
+      if (data.plain) {
+        const cleaned = plainText(text)
+        if (cleaned) text = cleaned
+      }
       if (!text) {
         return { ok: false as const, error: "Grok trả về rỗng.", tier: "local" as const }
       }
