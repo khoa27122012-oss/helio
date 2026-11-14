@@ -105,6 +105,8 @@ export type Activity = { id: string; text: string; time: string }
 
 export type Point = { day: string; tokens: number }
 
+export type ExtraSkill = { id: string; name: string; source: string; text: string }
+
 export type StudioData = {
   panes: Pane[]
   focusId: string
@@ -123,4 +125,6 @@ export type StudioData = {
   enabled: string[]
   strategy: StrategyId
   catalogRev: number
+  directive: string
+  extraSkills: ExtraSkill[]
 }

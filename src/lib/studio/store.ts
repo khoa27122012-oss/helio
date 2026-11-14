@@ -24,6 +24,9 @@ type Actions = {
   toggleMachine: (id: string) => void
   toggleSkill: (id: string) => void
   setStrategy: (strategy: StrategyId) => void
+  setDirective: (text: string) => void
+  addExtra: (skill: { name: string; source: string; text: string }) => void
+  removeExtra: (id: string) => void
   begin: () => void
   addAgent: (name: string) => void
   reset: () => void
@@ -47,6 +50,14 @@ function dropKey(map: Record<string, string>, id: string) {
   const next = { ...map }
   delete next[id]
   return next
+}
+
+function packSkills(state: StudioData, input: string) {
+  const extra = state.extraSkills
+    .slice(0, 8)
+    .map((skill) => `${skill.name}: ${skill.text.replace(/\s+/g, " ").slice(0, 240)}`)
+    .join("\n")
+  return `${skillDigest(state.enabled, input)}\n${extra}`.trim().slice(0, 2200)
 }
 
 function roomContext(state: StudioData, pane: Pane) {
@@ -210,8 +221,9 @@ export const useStudio = create<Studio>()(
         void askHelio({
           data: {
             prompt: input,
-            skills: skillDigest(state.enabled, input),
+            skills: packSkills(state, input),
             context: roomContext(state, pane),
+            directive: state.directive,
             route: state.strategy === "shield" ? "shield" : "bridge",
             tight: state.enabled.some((id) => id === "token-shield" || id === "prefix-cache" || id === "on-demand"),
             plain: state.enabled.includes("plain"),
@@ -409,6 +421,18 @@ export const useStudio = create<Studio>()(
         set({ enabled: reconcileEnabled() })
       },
       setStrategy: (strategy) => set({ strategy }),
+      setDirective: (text) => set({ directive: text.slice(0, 4000) }),
+      addExtra: (skill) => {
+        const name = skill.name.trim().slice(0, 80)
+        const text = skill.text.trim().slice(0, 4000)
+        if (!name || text.length < 20) return
+        const source = skill.source.trim().slice(0, 300)
+        if (get().extraSkills.some((item) => item.source === source && source)) return
+        set({
+          extraSkills: [{ id: nid("skill"), name, source, text }, ...get().extraSkills].slice(0, 12),
+        })
+      },
+      removeExtra: (id) => set({ extraSkills: get().extraSkills.filter((item) => item.id !== id) }),
       begin: () => {
         if (get().started && get().panes.length > 0) return
         const agents = ROSTER.map(roomAgent)
@@ -474,6 +498,8 @@ export const useStudio = create<Studio>()(
         enabled: state.enabled,
         strategy: state.strategy,
         catalogRev: state.catalogRev,
+        directive: state.directive,
+        extraSkills: state.extraSkills,
       }),
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<StudioData>
@@ -483,6 +509,8 @@ export const useStudio = create<Studio>()(
           enabled: reconcileEnabled(),
           strategy: saved.strategy ?? current.strategy,
           started: Boolean(saved.started),
+          directive: typeof saved.directive === "string" ? saved.directive : "",
+          extraSkills: Array.isArray(saved.extraSkills) ? saved.extraSkills.slice(0, 12) : [],
           catalogRev: 2,
           inflight: {},
         }

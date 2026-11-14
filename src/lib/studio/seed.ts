@@ -395,5 +395,7 @@ export function demoData(): StudioData {
     enabled: defaultEnabled(),
     strategy: "bridge",
     catalogRev: 2,
+    directive: "",
+    extraSkills: [],
   }
 }

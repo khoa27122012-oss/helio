@@ -128,6 +128,8 @@ export function Room() {
   const blocked = useStudio((s) => s.blocked)
   const strategy = useStudio((s) => s.strategy)
   const enabled = useStudio((s) => s.enabled)
+  const extraSkills = useStudio((s) => s.extraSkills)
+  const directive = useStudio((s) => s.directive)
   const focus = useStudio((s) => s.focus)
   const setLayout = useStudio((s) => s.setLayout)
   const addPane = useStudio((s) => s.addPane)
@@ -209,6 +211,12 @@ export function Room() {
         ) : null}
         <Link to="/recipes" className="inline-flex h-11 items-center rounded-md border border-line px-3 text-sm text-paper hover:border-lamp">
           Công thức
+        </Link>
+        <Link to="/gateway" className="inline-flex h-11 items-center rounded-md border border-line px-3 text-sm text-paper hover:border-lamp">
+          Tìm skill
+        </Link>
+        <Link to="/lenh" className="inline-flex h-11 items-center rounded-md border border-line px-3 text-sm text-paper hover:border-lamp">
+          File lệnh
         </Link>
         <div className="relative">
           <Button variant="line" onClick={() => setAddOpen((value) => !value)} className="px-3">
@@ -329,12 +337,15 @@ export function Room() {
                 </li>
               ))}
             </ol>
-            <h3 className="mt-5 text-sm font-medium">Plugin</h3>
+            <h3 className="mt-5 text-sm font-medium">Skill</h3>
             <p className="mt-2 text-sm leading-6 text-paper">
-              {strategyName(strategy)} · {enabled.length} mục đang bật
+              {strategyName(strategy)} · {enabled.length} plugin bật · {extraSkills.length} skill đưa vào
             </p>
             <Link to="/gateway" className="mt-2 inline-flex h-11 items-center text-sm text-lamp">
-              Plugin đang bật
+              Tìm skill
+            </Link>
+            <Link to="/lenh" className="inline-flex h-11 items-center text-sm text-lamp">
+              File lệnh{directive.trim() ? " · đang có" : ""}
             </Link>
             <h3 className="mt-5 text-sm font-medium">Hàng rào</h3>
             <ul className="mt-2 flex flex-col gap-2 text-sm leading-6 text-mist">

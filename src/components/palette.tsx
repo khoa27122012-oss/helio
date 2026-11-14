@@ -29,7 +29,8 @@ export function Palette({ open, onClose }: { open: boolean; onClose: () => void 
       { id: "machines", group: "Đi tới", label: "Máy", hint: "SSH và SFTP", run: go("/machines") },
       { id: "recipes", group: "Đi tới", label: "Công thức", hint: "Câu lệnh đã lưu", run: go("/recipes") },
       { id: "insights", group: "Đi tới", label: "Nhịp", hint: "Token và hoạt động", run: go("/insights") },
-      { id: "gateway", group: "Đi tới", label: "Plugin", hint: "Giọng thường và cách gọi", run: go("/gateway") },
+      { id: "gateway", group: "Đi tới", label: "Skill", hint: "Tìm trên GitHub, Claude, Codex, Gemini", run: go("/gateway") },
+      { id: "lenh", group: "Đi tới", label: "File lệnh", hint: "Lập khung, khóa viết code, rà soát", run: go("/lenh") },
       ...repos.map((repo) => ({
         id: `repo-${repo.slug}`,
         group: "Kho",

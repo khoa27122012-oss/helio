@@ -19,7 +19,7 @@ import { useStudio } from "@/lib/studio/store"
 
 const NAV = [
   { to: "/", label: "Phòng", icon: LayoutGrid },
-  { to: "/gateway", label: "Plugin", icon: Blocks },
+  { to: "/gateway", label: "Skill", icon: Blocks },
   { to: "/repos", label: "Kho", icon: FolderGit2 },
   { to: "/flow", label: "Duyệt", icon: GitPullRequest },
   { to: "/agents", label: "Agent", icon: Bot },

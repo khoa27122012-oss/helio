@@ -8,7 +8,8 @@ Phòng điều khiển cho agent và kho mã. Nhiều khung chat, mỗi agent m�
 - **Thêm agent** và **Quay lại**
 - Tách 1, 2 hoặc 3 cột, shell cạnh chat, tạm dừng, công thức
 - **Hàng rào** chặn `rm -rf`, `sudo`, `git reset --hard`, `git push --force`
-- Plugin và skill luôn bật, giữ tên mặc định
+- Plugin luôn bật. Skill tìm trên GitHub, dán link, hoặc tải file .md
+- File lệnh `lenh.md` siết việc model được làm. Hàng rào vẫn thắng
 - Câu không phải lệnh gọi Grok 4.5. Lệnh shell không gọi model
 
 ## Bảng lệnh

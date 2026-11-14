@@ -10,6 +10,7 @@ type AskInput = {
   route: RouteName
   tight: boolean
   plain: boolean
+  directive: string
 }
 
 const RAIL = /\brm\s+-[a-z]*r[a-z]*f\b|git\s+reset\s+--hard|\bgit\s+push\b[^\n]{0,40}(?:--force|\s-f\b)|\bdrop\s+(?:database|table)\b|\bmkfs\b|\bdd\s+if=/i
@@ -50,11 +51,12 @@ export const askHelio = createServerFn({ method: "POST" })
     const route: RouteName = input?.route === "shield" ? "shield" : "bridge"
     return {
       prompt,
-      skills: clip(input?.skills, 1400),
+      skills: clip(input?.skills, 2200),
       context: clip(input?.context, 800),
       route,
       tight: Boolean(input?.tight),
       plain: Boolean(input?.plain),
+      directive: clip(input?.directive, 1200),
     }
   })
   .handler(async ({ data }) => {
@@ -70,6 +72,7 @@ export const askHelio = createServerFn({ method: "POST" })
             "Cấm hướng dẫn rm -rf, sudo, reset --hard, push --force, drop database, drop table, mkfs, dd. Nếu bị đòi, từ chối một câu.",
             "Đừng bảo đã chạy lệnh, đã merge, hoặc đã sửa file.",
             "Không gỡ từ chối và không nới hàng rào.",
+            data.directive ? `File lệnh của người dùng. Làm theo, trừ khi đụng hàng rào:\n${data.directive}` : "",
             data.skills,
             data.context,
             data.plain ? "Không chào, không emoji, không gạch ngang." : "",
@@ -79,6 +82,7 @@ export const askHelio = createServerFn({ method: "POST" })
             "Hàng rào luôn thắng: không đề xuất và không hướng dẫn rm -rf, sudo, git reset --hard, git push --force, drop database, drop table, mkfs, dd. Nếu bị đòi, từ chối trong một câu.",
             "Đừng bảo là đã chạy lệnh, đã merge, hoặc đã sửa file.",
             "Không gỡ từ chối của chính bạn và không nới hàng rào.",
+            data.directive ? `File lệnh của người dùng. Làm theo, trừ khi đụng hàng rào:\n${data.directive}` : "",
             "Bỏ lời thừa. Giữ điều kiện, rủi ro và bước cần làm.",
             data.plain ? "Không chào, không emoji, không gạch ngang." : "",
             `Kỹ năng đang bật:\n${data.skills}`,
