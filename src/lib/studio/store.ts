@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware"
 import { askHelio } from "@/lib/gateway/ask"
 import { INSTALLED, skillDigest } from "@/lib/gateway/catalog"
 import { cleanKey } from "@/lib/gateway/key"
+import { isService, type ServiceId } from "@/lib/gateway/services"
 import { VENDORS, guessVendors, isVendor, vendorLabel, type VendorId } from "@/lib/gateway/vendors"
 import { needsModel, planReply, type Reply } from "./reply"
 import { demoData } from "./seed"
@@ -33,6 +34,8 @@ type Actions = {
   setTask: (id: string, task: string) => void
   begin: () => void
   addAgent: (name: string) => void
+  addLink: (input: { service: ServiceId; account: string; apiKey: string }) => boolean
+  removeLink: (service: ServiceId) => void
   reset: () => void
 }
 
@@ -532,6 +535,15 @@ export const useStudio = create<Studio>()(
           focusId: pane.id,
         })
       },
+      addLink: (input) => {
+        const apiKey = cleanKey(input.apiKey)
+        const account = input.account.trim().slice(0, 80)
+        if (!apiKey || !account || !isService(input.service)) return false
+        const link = { id: `link-${input.service}`, service: input.service, account, apiKey }
+        set({ links: [link, ...(get().links ?? []).filter((item) => item.service !== input.service)].slice(0, 12) })
+        return true
+      },
+      removeLink: (service) => set({ links: (get().links ?? []).filter((item) => item.service !== service) }),
       reset: () => set({ ...demoData(), inflight: {} }),
     }),
     {
@@ -557,6 +569,7 @@ export const useStudio = create<Studio>()(
         catalogRev: state.catalogRev,
         directive: state.directive,
         extraSkills: state.extraSkills,
+        links: state.links,
       }),
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<StudioData>
@@ -568,6 +581,15 @@ export const useStudio = create<Studio>()(
           started: Boolean(saved.started),
           directive: typeof saved.directive === "string" ? saved.directive : "",
           extraSkills: Array.isArray(saved.extraSkills) ? saved.extraSkills.slice(0, 12) : [],
+          links: Array.isArray(saved.links)
+            ? saved.links.flatMap((item) => {
+                const apiKey = cleanKey(item?.apiKey)
+                if (!apiKey || !isService(item?.service)) return []
+                const account = typeof item.account === "string" ? item.account.trim().slice(0, 80) : ""
+                if (!account) return []
+                return [{ id: `link-${item.service}`, service: item.service, account, apiKey }]
+              }).slice(0, 12)
+            : [],
           agents: Array.isArray(saved.agents)
             ? saved.agents.map((agent) => {
                 const apiKey = cleanKey(agent.apiKey) || ""

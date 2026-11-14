@@ -5,6 +5,7 @@ import { SignedOut } from "@/lib/auth/gates"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/cn"
 import { strategyName } from "@/lib/gateway/catalog"
+import { serviceLabel } from "@/lib/gateway/services"
 import { vendorLabel } from "@/lib/gateway/vendors"
 import type { Line, Pane } from "@/lib/studio/types"
 import { useStudio } from "@/lib/studio/store"
@@ -131,6 +132,7 @@ export function Room() {
   const strategy = useStudio((s) => s.strategy)
   const enabled = useStudio((s) => s.enabled)
   const extraSkills = useStudio((s) => s.extraSkills)
+  const links = useStudio((s) => s.links ?? [])
   const setAgentDirective = useStudio((s) => s.setAgentDirective)
   const focus = useStudio((s) => s.focus)
   const setLayout = useStudio((s) => s.setLayout)
@@ -427,6 +429,23 @@ export function Room() {
             )}
             <Link to="/agents" className="inline-flex h-11 items-center text-sm text-lamp">
               Mục Agent
+            </Link>
+            <h3 className="mt-5 text-sm font-medium">Dịch vụ đã nối</h3>
+            {links.length === 0 ? (
+              <p className="mt-2 text-sm leading-6 text-paper">
+                Stitch, Figma và các dịch vụ khác ở mục Nối. Chỉ hiện khi chính dịch vụ chấp nhận khóa.
+              </p>
+            ) : (
+              <ul className="mt-2 flex flex-col gap-2">
+                {links.map((link) => (
+                  <li key={link.id} className="text-sm text-paper">
+                    {serviceLabel(link.service)} · {link.account}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Link to="/noi" className="inline-flex h-11 items-center text-sm text-lamp">
+              Mục Nối
             </Link>
             <h3 className="mt-5 text-sm font-medium">Hàng rào</h3>
             <ul className="mt-2 flex flex-col gap-2 text-sm leading-6 text-mist">

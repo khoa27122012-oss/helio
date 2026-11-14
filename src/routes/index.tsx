@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router"
+import { Link, createFileRoute } from "@tanstack/react-router"
 import { Mark } from "@/components/mark"
 import { Room } from "@/components/room"
 import { Button } from "@/components/ui/button"
@@ -26,6 +26,9 @@ function Home() {
         <Button className="mt-8" onClick={() => begin()}>
           Bắt đầu
         </Button>
+        <Link to="/noi" className="mt-4 inline-flex h-11 items-center text-sm text-lamp">
+          Nối Stitch, Figma và dịch vụ khác
+        </Link>
       </div>
     )
   }

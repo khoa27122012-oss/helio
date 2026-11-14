@@ -1,3 +1,4 @@
+import type { ServiceId } from "@/lib/gateway/services"
 import type { VendorId } from "@/lib/gateway/vendors"
 
 export type StrategyId = "bridge" | "shield" | "local"
@@ -115,6 +116,13 @@ export type Point = { day: string; tokens: number }
 
 export type ExtraSkill = { id: string; name: string; source: string; text: string }
 
+export type ServiceLink = {
+  id: string
+  service: ServiceId
+  account: string
+  apiKey: string
+}
+
 export type StudioData = {
   panes: Pane[]
   focusId: string
@@ -135,4 +143,5 @@ export type StudioData = {
   catalogRev: number
   directive: string
   extraSkills: ExtraSkill[]
+  links: ServiceLink[]
 }
