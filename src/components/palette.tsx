@@ -29,7 +29,7 @@ export function Palette({ open, onClose }: { open: boolean; onClose: () => void 
       { id: "machines", group: "Đi tới", label: "Máy", hint: "SSH và SFTP", run: go("/machines") },
       { id: "recipes", group: "Đi tới", label: "Công thức", hint: "Câu lệnh đã lưu", run: go("/recipes") },
       { id: "insights", group: "Đi tới", label: "Nhịp", hint: "Token và hoạt động", run: go("/insights") },
-      { id: "gateway", group: "Đi tới", label: "Cổng", hint: "Skill, OmniRoute, 9Router, Grok", run: go("/gateway") },
+      { id: "gateway", group: "Đi tới", label: "Tải", hint: "Plugin, connector, Android SDK", run: go("/gateway") },
       ...repos.map((repo) => ({
         id: `repo-${repo.slug}`,
         group: "Kho",

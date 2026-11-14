@@ -1,8 +1,9 @@
 import { useEffect, useState, type ReactNode } from "react"
-import { Link, useRouterState } from "@tanstack/react-router"
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router"
 import {
   Activity,
   Bot,
+  Download,
   FolderGit2,
   GitPullRequest,
   LayoutGrid,
@@ -10,7 +11,6 @@ import {
   Server,
   Shield,
   Sparkles,
-  Cable,
 } from "lucide-react"
 import { Mark } from "@/components/mark"
 import { Palette } from "@/components/palette"
@@ -20,13 +20,13 @@ import { useStudio } from "@/lib/studio/store"
 
 const NAV = [
   { to: "/", label: "Phòng", icon: LayoutGrid },
+  { to: "/gateway", label: "Tải", icon: Download },
   { to: "/repos", label: "Kho", icon: FolderGit2 },
   { to: "/flow", label: "Duyệt", icon: GitPullRequest },
   { to: "/agents", label: "Agent", icon: Bot },
   { to: "/machines", label: "Máy", icon: Server },
   { to: "/recipes", label: "Công thức", icon: Sparkles },
   { to: "/insights", label: "Nhịp", icon: Activity },
-  { to: "/gateway", label: "Cổng", icon: Cable },
 ]
 
 function NavLink({
@@ -64,6 +64,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const tokens = useStudio((s) => s.agents.reduce((sum, agent) => sum + agent.tokens, 0))
   const tick = useStudio((s) => s.tick)
   const [open, setOpen] = useState(false)
+  const navigate = useNavigate()
 
   useEffect(() => {
     void useStudio.persist.rehydrate()
@@ -80,10 +81,14 @@ export function Shell({ children }: { children: ReactNode }) {
         event.preventDefault()
         setOpen(true)
       }
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "j") {
+        event.preventDefault()
+        void navigate({ to: "/recipes" })
+      }
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [])
+  }, [navigate])
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-ink font-sans text-paper">

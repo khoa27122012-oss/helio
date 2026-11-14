@@ -12,7 +12,8 @@ Giao diện đi một hướng khác GitHub: mực tối, giấy ấm, một mà
 - **Duyệt** — việc và pull request, diff cạnh nhận xét, merge khi CI đạt
 - **Agent** — tạm dừng, đổi worktree, token
 - **Máy** — bật/tắt, cây SFTP
-- **Công thức** — câu viết sẵn, gửi vào pane đang chọn
+- **Tải** — plugin, skill, connector (Grok, Gemini, Claude, ChatGPT, GitHub, Stitch…), ghép connector, Android SDK và trình biên dịch. Build thử hiện trong pane và khung máy.
+- **Công thức** — câu viết sẵn. `⌘J` mở mục này. `⌘K` mở bảng lệnh.
 - **Nhịp** — token 14 ngày, 16 tuần, nhật ký
 - **Cổng** — Ponytail, Taste, Playwright CLI, token shield, Graphify, web-design-guidelines, Heretic (chỉ ghi chú nghiên cứu). Câu tiếng Việt gọi Grok 4.5 qua tuyến OmniRoute + 9Router. Lệnh shell không gọi model.
 

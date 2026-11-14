@@ -2,6 +2,7 @@ import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import { askHelio } from "@/lib/gateway/ask"
 import { skillDigest, strategyName } from "@/lib/gateway/catalog"
+import { ANDROID_BUILD, androidLog, connectorName, toolName } from "@/lib/gateway/market"
 import { needsModel, planReply, type Reply } from "./reply"
 import { demoData } from "./seed"
 import type { Pane, PaneStatus, StudioData, StrategyId } from "./types"
@@ -23,6 +24,12 @@ type Actions = {
   toggleMachine: (id: string) => void
   toggleSkill: (id: string) => void
   setStrategy: (strategy: StrategyId) => void
+  installTools: (ids: string[]) => void
+  removeTool: (id: string) => void
+  setConnector: (id: string, on: boolean) => void
+  addStitch: (ids: string[]) => void
+  removeStitch: (id: string) => void
+  buildTry: () => void
   reset: () => void
 }
 
@@ -48,14 +55,19 @@ function dropKey(map: Record<string, string>, id: string) {
 
 function roomContext(state: StudioData, pane: Pane) {
   const open = state.pulls.filter((pull) => pull.state !== "merged").slice(0, 4)
-  const off = state.machines.filter((machine) => !machine.online).map((machine) => machine.name)
-  return [
-    `Pane ${pane.title}, nhánh ${pane.branch}, ${pane.cwd}.`,
-    open.length
-      ? `PR: ${open.map((pull) => `${pull.repo} · ${pull.title} (${pull.state})`).join("; ")}`
-      : "Không có PR mở.",
-    off.length ? `Máy tắt: ${off.join(", ")}` : "Mọi máy đang mở.",
-  ].join("\n")
+  const short = state.enabled.includes("diff-only")
+  const pr = open.length
+    ? `PR: ${open.map((pull) => (short ? pull.title : `${pull.repo} · ${pull.title} (${pull.state})`)).join("; ")}`
+    : "Không có PR mở."
+  const lines = [`Pane ${pane.title}, nhánh ${pane.branch}.`, pr]
+  if (!short) {
+    const off = state.machines.filter((machine) => !machine.online).map((machine) => machine.name)
+    lines.push(off.length ? `Máy tắt: ${off.join(", ")}` : "Mọi máy đang mở.")
+    const linked = state.connectors.filter((item) => item.on).map((item) => connectorName(item.id))
+    if (linked.length) lines.push(`Đã nối: ${linked.slice(0, 8).join(", ")}`)
+    if (state.stitches[0]) lines.push(`Ghép: ${state.stitches[0].title}`)
+  }
+  return lines.join("\n")
 }
 
 export const useStudio = create<Studio>()(
@@ -79,7 +91,28 @@ export const useStudio = create<Studio>()(
           const lines = pane.lines.map((line, i) => (i === idx ? { ...line, hidden: false } : line))
           return { ...pane, lines, status: finish(lines, pane.hold) }
         })
-        if (changed) set({ panes })
+        const tools = state.tools.map((tool) => {
+          if (tool.state !== "installing") return tool
+          changed = true
+          const progress = Math.min(100, tool.progress + 8)
+          return progress >= 100 ? { ...tool, progress: 100, state: "ready" as const } : { ...tool, progress }
+        })
+        if (!changed) return
+        const finished = tools.filter((tool, index) => tool.state === "ready" && state.tools[index]?.state === "installing")
+        set({
+          panes,
+          tools,
+          activity: finished.length
+            ? [
+                {
+                  id: nid("act"),
+                  text: `Đã cài ${finished.map((tool) => toolName(tool.id)).join(", ")}`,
+                  time: "vừa xong",
+                },
+                ...state.activity,
+              ].slice(0, 8)
+            : state.activity,
+        })
       },
       submit: (paneId, text) => {
         const input = text.trim()
@@ -203,9 +236,10 @@ export const useStudio = create<Studio>()(
         void askHelio({
           data: {
             prompt: input,
-            skills: skillDigest(state.enabled),
+            skills: skillDigest(state.enabled, input),
             context: roomContext(state, pane),
             route: state.strategy === "shield" ? "shield" : "bridge",
+            tight: state.enabled.some((id) => id === "token-shield" || id === "prefix-cache" || id === "on-demand"),
           },
         })
           .then((result) => {
@@ -408,6 +442,88 @@ export const useStudio = create<Studio>()(
         set({ enabled: enabled.includes(id) ? enabled.filter((item) => item !== id) : [...enabled, id] })
       },
       setStrategy: (strategy) => set({ strategy }),
+      installTools: (ids) => {
+        const want = new Set(ids)
+        set({
+          tools: get().tools.map((tool) =>
+            want.has(tool.id) && tool.state === "absent" ? { ...tool, state: "installing", progress: 4 } : tool,
+          ),
+        })
+      },
+      removeTool: (id) =>
+        set({
+          tools: get().tools.map((tool) => (tool.id === id ? { ...tool, state: "absent", progress: 0 } : tool)),
+        }),
+      setConnector: (id, on) => {
+        if (id === "grok" && !on) return
+        set({
+          connectors: get().connectors.map((item) => (item.id === id ? { ...item, on } : item)),
+        })
+      },
+      addStitch: (ids) => {
+        const linked = new Set(get().connectors.filter((item) => item.on).map((item) => item.id))
+        const picked = [...new Set(ids)].filter((id) => linked.has(id))
+        if (picked.length < 2) return
+        const title = picked.map((id) => connectorName(id)).join(" + ")
+        set({
+          stitches: [{ id: nid("stitch"), title, ids: picked }, ...get().stitches].slice(0, 8),
+        })
+      },
+      removeStitch: (id) => set({ stitches: get().stitches.filter((item) => item.id !== id) }),
+      buildTry: () => {
+        const state = get()
+        const pane = state.panes.find((item) => item.id === state.focusId)
+        if (!pane) return
+        const ready = new Set(state.tools.filter((tool) => tool.state === "ready").map((tool) => tool.id))
+        const missing = ANDROID_BUILD.filter((id) => !ready.has(id))
+        const echo = { id: nid("in"), kind: "in" as const, text: "./gradlew :app:assembleDebug" }
+        if (missing.length) {
+          const names = missing.map((id) => toolName(id)).join(", ")
+          set({
+            panes: state.panes.map((item) =>
+              item.id === pane.id
+                ? {
+                    ...item,
+                    status: "waiting" as const,
+                    hold: "waiting" as const,
+                    plan: ["Thiếu gói để build.", "Cài ở mục Tải, rồi build lại."],
+                    lines: [
+                      ...item.lines,
+                      echo,
+                      { id: nid("sys"), kind: "sys" as const, text: `Chưa build. Còn thiếu: ${names}` },
+                    ].slice(-80),
+                  }
+                : item,
+            ),
+          })
+          return
+        }
+        const device = ready.has("emulator") ? "emulator-5554" : "khung-xem-thu"
+        const rest = androidLog(device).map((text) => ({
+          id: nid("out"),
+          kind: "out" as const,
+          text,
+          hidden: true,
+        }))
+        set({
+          preview: { apk: "app-debug.apk", device },
+          activity: [
+            { id: nid("act"), text: `Build thử · ${device}`, time: "vừa xong" },
+            ...state.activity,
+          ].slice(0, 8),
+          panes: state.panes.map((item) =>
+            item.id === pane.id
+              ? {
+                  ...item,
+                  status: "running" as const,
+                  hold: "idle" as const,
+                  plan: ["assembleDebug trong phòng.", "Không cài SDK lên máy của bạn.", `Thiết bị: ${device}`],
+                  lines: [...item.lines, echo, ...rest].slice(-80),
+                }
+              : item,
+          ),
+        })
+      },
       reset: () => set({ ...demoData(), inflight: {} }),
     }),
     {
@@ -429,6 +545,10 @@ export const useStudio = create<Studio>()(
         blocked: state.blocked,
         enabled: state.enabled,
         strategy: state.strategy,
+        tools: state.tools,
+        connectors: state.connectors,
+        stitches: state.stitches,
+        preview: state.preview,
       }),
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<StudioData>
@@ -437,6 +557,10 @@ export const useStudio = create<Studio>()(
           ...saved,
           enabled: saved.enabled?.length ? saved.enabled : current.enabled,
           strategy: saved.strategy ?? current.strategy,
+          tools: saved.tools?.length ? saved.tools : current.tools,
+          connectors: saved.connectors?.length ? saved.connectors : current.connectors,
+          stitches: saved.stitches ?? current.stitches,
+          preview: saved.preview ?? null,
           inflight: {},
         }
       },

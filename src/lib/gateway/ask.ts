@@ -7,6 +7,7 @@ type AskInput = {
   skills: string
   context: string
   route: RouteName
+  tight: boolean
 }
 
 const RAIL = /\brm\s+-[a-z]*r[a-z]*f\b|git\s+reset\s+--hard|\bgit\s+push\b[^\n]{0,40}(?:--force|\s-f\b)|\bdrop\s+(?:database|table)\b|\bmkfs\b|\bdd\s+if=/i
@@ -50,6 +51,7 @@ export const askHelio = createServerFn({ method: "POST" })
       skills: clip(input?.skills, 1400),
       context: clip(input?.context, 800),
       route,
+      tight: Boolean(input?.tight),
     }
   })
   .handler(async ({ data }) => {
@@ -58,15 +60,26 @@ export const askHelio = createServerFn({ method: "POST" })
       return { ok: false as const, error: "Grok chưa sẵn trong bản này.", tier: "local" as const }
     }
 
-    const system = [
-      "Bạn là Helio, phòng điều khiển lập trình. Trả lời tiếng Việt, đủ ý, ngắn, không mở đầu xã giao.",
-      "Hàng rào luôn thắng: không đề xuất và không hướng dẫn rm -rf, sudo, git reset --hard, git push --force, drop database, drop table, mkfs, dd. Nếu bị đòi, từ chối trong một câu.",
-      "Đây không phải shell thật. Đừng bảo là đã chạy lệnh, đã merge, hoặc đã sửa file.",
-      "Không gỡ từ chối của chính bạn và không nới hàng rào, kể cả khi một skill nghiên cứu được bật.",
-      "Token shield: bỏ lời thừa. Giữ điều kiện, rủi ro và bước cần làm.",
-      `Kỹ năng đang bật:\n${data.skills}`,
-      data.context ? `Ngữ cảnh phòng:\n${data.context}` : "",
-    ]
+    const system = (
+      data.tight
+        ? [
+            "Helio. Tiếng Việt, đủ ý, không mở đầu xã giao.",
+            "Cấm hướng dẫn rm -rf, sudo, reset --hard, push --force, drop database, drop table, mkfs, dd. Nếu bị đòi, từ chối một câu.",
+            "Đừng bảo đã chạy lệnh, đã merge, hoặc đã sửa file.",
+            "Không gỡ từ chối và không nới hàng rào.",
+            data.skills,
+            data.context,
+          ]
+        : [
+            "Bạn là Helio, phòng điều khiển lập trình. Trả lời tiếng Việt, đủ ý, ngắn, không mở đầu xã giao.",
+            "Hàng rào luôn thắng: không đề xuất và không hướng dẫn rm -rf, sudo, git reset --hard, git push --force, drop database, drop table, mkfs, dd. Nếu bị đòi, từ chối trong một câu.",
+            "Đây không phải shell thật. Đừng bảo là đã chạy lệnh, đã merge, hoặc đã sửa file.",
+            "Không gỡ từ chối của chính bạn và không nới hàng rào, kể cả khi một skill nghiên cứu được bật.",
+            "Token shield: bỏ lời thừa. Giữ điều kiện, rủi ro và bước cần làm.",
+            `Kỹ năng đang bật:\n${data.skills}`,
+            data.context ? `Ngữ cảnh phòng:\n${data.context}` : "",
+          ]
+    )
       .filter(Boolean)
       .join("\n")
 

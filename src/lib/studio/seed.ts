@@ -1,5 +1,6 @@
 import type { Line, StudioData } from "./types"
 import { defaultEnabled } from "@/lib/gateway/catalog"
+import { CONNECTORS, TOOLS } from "@/lib/gateway/market"
 
 function line(id: string, kind: Line["kind"], text: string): Line {
   return { id, kind, text }
@@ -525,5 +526,9 @@ export function demoData(): StudioData {
     heatmap: heat(),
     enabled: defaultEnabled(),
     strategy: "bridge",
+    tools: TOOLS.map((tool) => ({ id: tool.id, progress: 0, state: "absent" as const })),
+    connectors: CONNECTORS.map((item) => ({ id: item.id, on: item.id === "grok" })),
+    stitches: [],
+    preview: null,
   }
 }
