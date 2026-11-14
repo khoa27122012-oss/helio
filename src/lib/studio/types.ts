@@ -1,3 +1,5 @@
+export type StrategyId = "bridge" | "shield" | "local"
+
 export type LineKind = "in" | "out" | "sys" | "ok" | "block"
 
 export type Line = {
@@ -117,4 +119,6 @@ export type StudioData = {
   series: Point[]
   heatmap: number[]
   blocked: number
+  enabled: string[]
+  strategy: StrategyId
 }

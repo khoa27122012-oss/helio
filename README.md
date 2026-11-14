@@ -14,8 +14,9 @@ Giao diện đi một hướng khác GitHub: mực tối, giấy ấm, một mà
 - **Máy** — bật/tắt, cây SFTP
 - **Công thức** — câu viết sẵn, gửi vào pane đang chọn
 - **Nhịp** — token 14 ngày, 16 tuần, nhật ký
+- **Cổng** — Ponytail, Taste, Playwright CLI, token shield, Graphify, web-design-guidelines, Heretic (chỉ ghi chú nghiên cứu). Câu tiếng Việt gọi Grok 4.5 qua tuyến OmniRoute + 9Router. Lệnh shell không gọi model.
 
-Đây là mô phỏng. Không có lệnh nào chạy trên máy của bạn, và không có remote thật để đẩy code.
+Đây là mô phỏng shell. Không có lệnh nào chạy trên máy của bạn. Câu không phải lệnh có thể gọi Grok nếu môi trường có khóa AI.
 
 ## Bảng lệnh
 

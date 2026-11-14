@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { Plus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/cn"
+import { strategyName } from "@/lib/gateway/catalog"
 import type { Line, Pane } from "@/lib/studio/types"
 import { useStudio } from "@/lib/studio/store"
 
@@ -119,6 +120,8 @@ export function Room() {
   const layout = useStudio((s) => s.layout)
   const agents = useStudio((s) => s.agents)
   const blocked = useStudio((s) => s.blocked)
+  const strategy = useStudio((s) => s.strategy)
+  const enabled = useStudio((s) => s.enabled)
   const focus = useStudio((s) => s.focus)
   const setLayout = useStudio((s) => s.setLayout)
   const addPane = useStudio((s) => s.addPane)
@@ -130,7 +133,7 @@ export function Room() {
   return (
     <div className="flex flex-col md:h-full md:overflow-hidden">
       <div className="flex flex-wrap items-center gap-2 px-3 pt-3">
-        <p className="mr-auto text-sm text-mist">Ba việc một lúc: agent, shell, và hàng rào trước khi lệnh chạy.</p>
+        <p className="mr-auto text-sm text-mist">Câu tiếng Việt đi qua Grok 4.5. Lệnh shell và lệnh phá ở lại hàng rào.</p>
         <div className="flex gap-1" role="group" aria-label="Số pane">
           {([1, 2, 3] as const).map((count) => (
             <button
@@ -237,6 +240,10 @@ export function Room() {
                 </li>
               ))}
             </ol>
+            <h3 className="mt-5 text-sm font-medium">Cổng</h3>
+            <p className="mt-2 text-sm leading-6 text-paper">
+              {strategyName(strategy)} · {enabled.length} skill đang bật
+            </p>
             <h3 className="mt-5 text-sm font-medium">Hàng rào</h3>
             <ul className="mt-2 flex flex-col gap-2 text-sm leading-6 text-mist">
               <li>Không đụng nhánh main của pane khác.</li>

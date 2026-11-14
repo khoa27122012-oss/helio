@@ -10,6 +10,7 @@ import {
   Server,
   Shield,
   Sparkles,
+  Cable,
 } from "lucide-react"
 import { Mark } from "@/components/mark"
 import { Palette } from "@/components/palette"
@@ -25,6 +26,7 @@ const NAV = [
   { to: "/machines", label: "Máy", icon: Server },
   { to: "/recipes", label: "Công thức", icon: Sparkles },
   { to: "/insights", label: "Nhịp", icon: Activity },
+  { to: "/gateway", label: "Cổng", icon: Cable },
 ]
 
 function NavLink({
@@ -117,7 +119,7 @@ export function Shell({ children }: { children: ReactNode }) {
         </div>
       </header>
       <div className="flex min-h-0 flex-1">
-        <nav className="hidden w-24 shrink-0 flex-col border-r border-line md:flex" aria-label="Chính">
+        <nav className="hidden w-24 shrink-0 flex-col overflow-y-auto border-r border-line md:flex" aria-label="Chính">
           {NAV.map((item) => (
             <NavLink key={item.to} {...item} path={path} className="h-16 w-full" />
           ))}

@@ -208,12 +208,24 @@ function natural(input: string, ctx: ReplyCtx): Reply {
   return { status: "idle", plan, lines }
 }
 
-export function planReply(raw: string, ctx: ReplyCtx): Reply {
+function unwrap(raw: string) {
   let input = raw.trim()
   if (/^mx\s+/i.test(input)) input = input.replace(/^mx\s+/i, "")
+  return input
+}
+
+export function planReply(raw: string, ctx: ReplyCtx): Reply {
+  const input = unwrap(raw)
   const stop = blocked(input)
   if (stop) return stop
   const known = command(input, ctx)
   if (known) return known
   return natural(input, ctx)
+}
+
+export function needsModel(raw: string, ctx: ReplyCtx) {
+  const input = unwrap(raw)
+  if (blocked(input)) return false
+  if (command(input, ctx)) return false
+  return true
 }

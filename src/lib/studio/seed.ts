@@ -1,4 +1,5 @@
 import type { Line, StudioData } from "./types"
+import { defaultEnabled } from "@/lib/gateway/catalog"
 
 function line(id: string, kind: Line["kind"], text: string): Line {
   return { id, kind, text }
@@ -81,13 +82,13 @@ export function demoData(): StudioData {
           "Xin duyệt trên Duyệt trước khi merge.",
         ],
         lines: [
-          line("g1", "sys", "Grok · grok-4 · worktree wt/grok-safety"),
+          line("g1", "sys", "Grok · grok-4.5 · worktree wt/grok-safety"),
           line("g2", "in", "kiểm tra hàng rào trước khi agent chạy git clean"),
           line("g3", "ok", "An toàn · lệnh hẹp trong worktree, không đụng main"),
           line("g4", "out", "1. git clean chỉ được trong thư mục wt/*"),
           line("g5", "out", "2. Chặn rm -rf, sudo, reset --hard, push --force"),
           line("g6", "out", "3. Lý do chặn hiện trong pane và được đếm ở thanh trên"),
-          line("g7", "sys", "Sẵn sàng. Gõ lệnh hoặc một câu tiếng Việt."),
+          line("g7", "sys", "Sẵn sàng. Câu tiếng Việt đi qua Grok 4.5. Lệnh shell ở lại phòng."),
         ],
       },
       {
@@ -136,11 +137,11 @@ export function demoData(): StudioData {
         id: "grok",
         name: "Grok",
         cli: "grok",
-        model: "grok-4",
+        model: "grok-4.5",
         tokens: 18420,
         paused: false,
         worktree: "wt/grok-safety",
-        note: "Hàng rào lệnh và worktree.",
+        note: "Hàng rào lệnh, worktree, và Grok 4.5 khi câu không phải lệnh shell.",
       },
       {
         id: "claude",
@@ -522,5 +523,7 @@ export function demoData(): StudioData {
       tokens: n * 100,
     })),
     heatmap: heat(),
+    enabled: defaultEnabled(),
+    strategy: "bridge",
   }
 }
